@@ -8,9 +8,8 @@ import { Label } from "@/components/ui/label";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export const Route = createFileRoute("/login")({
-  ssr: false,
   beforeLoad: async () => {
-    if (!supabase) return;
+    if (!supabase || typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
     if (data.session) throw redirect({ to: "/biblioteca" });
   },
