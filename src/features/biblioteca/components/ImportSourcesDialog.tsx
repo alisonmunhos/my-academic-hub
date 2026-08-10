@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, FileText, Link2, Loader2, Plus } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileText, Link2, Loader2, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConfirmImport, type ImportResult } from "../hooks/useConfirmImport";
 import { metadataToCandidate, useExtractMetadata } from "../hooks/useExtractMetadata";
+import { useExtractPdf } from "../hooks/useExtractPdf";
 import {
   buildExistingChaveDocMap,
   candidateChaveDoc,
@@ -34,7 +35,7 @@ interface ImportSourcesDialogProps {
   onOpenExisting: (id: string) => void;
 }
 
-type Step = "choose" | "link" | "ris" | "review" | "result";
+type Step = "choose" | "link" | "ris" | "pdf" | "review" | "result";
 
 export function ImportSourcesDialog({
   ownerId,
@@ -50,6 +51,7 @@ export function ImportSourcesDialog({
   const [risLoading, setRisLoading] = useState(false);
 
   const extractMetadata = useExtractMetadata();
+  const extractPdf = useExtractPdf();
   const confirmImport = useConfirmImport(ownerId);
 
   const existingMap = useMemo(() => buildExistingChaveDocMap(sources), [sources]);
@@ -125,6 +127,20 @@ export function ImportSourcesDialog({
     }
   }
 
+  async function handlePdfFile(fileList: FileList | null) {
+    const file = fileList?.[0];
+    if (!file) return;
+    try {
+      const candidate = await extractPdf.mutateAsync(file);
+      setCandidates((prev) => [...prev, candidate]);
+      setStep("review");
+      toast.warning("Extração de PDF é melhor esforço — confira e complete os campos na revisão.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível ler esse PDF.");
+    }
+  }
+
   function updateCandidate(localId: string, patch: Partial<ImportCandidate>) {
     setCandidates((prev) => prev.map((c) => (c.localId === localId ? { ...c, ...patch } : c)));
   }
@@ -185,6 +201,20 @@ export function ImportSourcesDialog({
                 </p>
               </div>
             </button>
+
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-lg border p-4 text-left hover:border-primary/50 hover:bg-accent/50"
+              onClick={() => setStep("pdf")}
+            >
+              <Upload className="size-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Importar por PDF</p>
+                <p className="text-xs text-muted-foreground">
+                  Melhor esforço, sem IA — normalmente vai exigir completar campos manualmente.
+                </p>
+              </div>
+            </button>
           </div>
         )}
 
@@ -231,6 +261,37 @@ export function ImportSourcesDialog({
               Cada entrada do arquivo vira uma linha na tela de revisão, com checagem de duplicata
               automática antes de importar.
             </p>
+          </div>
+        )}
+
+        {step === "pdf" && (
+          <div className="space-y-4 px-6 py-6">
+            <Alert>
+              <AlertTriangle className="size-4" />
+              <AlertTitle>Melhor esforço</AlertTitle>
+              <AlertDescription>
+                Sem usar IA paga, extraímos apenas os metadados embutidos no PDF e um palpite a
+                partir do texto da primeira página. A precisão é bem menor que nos outros canais —
+                quase sempre você vai precisar completar campos manualmente na revisão, que é
+                obrigatória antes de importar.
+              </AlertDescription>
+            </Alert>
+            <div className="space-y-1.5">
+              <Label htmlFor="import-pdf">Arquivo PDF</Label>
+              <Input
+                id="import-pdf"
+                type="file"
+                accept="application/pdf"
+                disabled={extractPdf.isPending}
+                onChange={(e) => handlePdfFile(e.target.files)}
+              />
+            </div>
+            {extractPdf.isPending && (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="size-3.5 animate-spin" />
+                Lendo PDF...
+              </p>
+            )}
           </div>
         )}
 
