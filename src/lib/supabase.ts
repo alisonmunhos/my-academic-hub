@@ -1,18 +1,7 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { supabase as generatedClient } from "@/integrations/supabase/client";
 
-const url = import.meta.env['VITE_SUPABASE_URL'] as string | undefined;
-const anonKey = (import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ??
-  import.meta.env['VITE_SUPABASE_ANON_KEY']) as string | undefined;
+/** O banco de dados agora está configurado via Lovable Cloud. */
+export const isSupabaseConfigured = true;
 
-/** Indica se o projeto Supabase externo já foi configurado. */
-export const isSupabaseConfigured = Boolean(url && anonKey);
-
-/**
- * Cliente Supabase. Enquanto as variáveis de ambiente não estiverem
- * configuradas, o valor é `null` e a tela de login exibe um aviso.
- */
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(url!, anonKey!, {
-      auth: { persistSession: true, autoRefreshToken: true },
-    })
-  : null;
+/** Cliente do banco de dados usado nas telas de login e biblioteca. */
+export const supabase = generatedClient;
