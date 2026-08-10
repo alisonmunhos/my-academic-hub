@@ -4,9 +4,12 @@ import { BookMarked, Loader2, LogOut, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
+import { AddSelectionToProjectPopover } from "@/features/biblioteca/components/AddSelectionToProjectPopover";
 import { ColumnVisibilityMenu } from "@/features/biblioteca/components/ColumnVisibilityMenu";
 import { FilterPanel } from "@/features/biblioteca/components/FilterPanel";
+import { ProjectsPanel } from "@/features/biblioteca/components/ProjectsPanel";
 import { SourceFormDialog } from "@/features/biblioteca/components/SourceFormDialog";
 import { SourcesTable } from "@/features/biblioteca/components/SourcesTable";
 import {
@@ -53,9 +56,25 @@ function BibliotecaPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const [filters, setFilters] = useState(createEmptyFilterState);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const editingSource: SourceRow | null = sources.find((s) => s.id === editingSourceId) ?? null;
   const filteredSources = useMemo(() => filterSources(sources, filters), [sources, filters]);
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) =>
+      prev.size === filteredSources.length ? new Set() : new Set(filteredSources.map((s) => s.id)),
+    );
+  }
 
   async function sair() {
     await supabase?.auth.signOut();
@@ -120,55 +139,84 @@ function BibliotecaPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold">
-            Minhas referências
-            {!isLoading && (
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                {filteredSources.length} de {sources.length}
-              </span>
-            )}
-          </h2>
-          <div className="flex items-center gap-2">
-            <ColumnVisibilityMenu
-              visibleColumns={visibleColumns}
-              onChange={(columns) => setVisibleColumns.mutate(columns)}
-            />
-            <Button size="sm" onClick={openNewSource}>
-              <Plus className="size-4" />
-              Nova fonte
-            </Button>
-          </div>
-        </div>
+        <Tabs defaultValue="referencias">
+          <TabsList className="mb-4">
+            <TabsTrigger value="referencias">Referências</TabsTrigger>
+            <TabsTrigger value="projetos">Projetos</TabsTrigger>
+          </TabsList>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
-          </div>
-        ) : (
-          <div className="flex items-start gap-4">
-            {ownerId && (
-              <FilterPanel
-                ownerId={ownerId}
-                sources={sources}
-                filters={filters}
-                onChange={setFilters}
-              />
-            )}
-            <div className="min-w-0 flex-1">
-              <SourcesTable
-                sources={filteredSources}
-                visibleColumns={visibleColumns}
-                onToggleFavorite={(source) =>
-                  toggleFavorite.mutate({ id: source.id, isFavorite: !source.is_favorite })
-                }
-                onEdit={openEditSource}
-                onOpenLink={handleOpenLink}
-                onOpenPdf={handleOpenPdf}
-              />
+          <TabsContent value="referencias">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h2 className="text-lg font-semibold">
+                Minhas referências
+                {!isLoading && (
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    {filteredSources.length} de {sources.length}
+                  </span>
+                )}
+              </h2>
+              <div className="flex items-center gap-2">
+                <ColumnVisibilityMenu
+                  visibleColumns={visibleColumns}
+                  onChange={(columns) => setVisibleColumns.mutate(columns)}
+                />
+                <Button size="sm" onClick={openNewSource}>
+                  <Plus className="size-4" />
+                  Nova fonte
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16 text-muted-foreground">
+                <Loader2 className="size-5 animate-spin" />
+              </div>
+            ) : (
+              <div className="flex items-start gap-4">
+                {ownerId && (
+                  <FilterPanel
+                    ownerId={ownerId}
+                    sources={sources}
+                    filters={filters}
+                    onChange={setFilters}
+                  />
+                )}
+                <div className="min-w-0 flex-1 space-y-3">
+                  {selectedIds.size > 0 && ownerId && (
+                    <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
+                      <span className="text-sm">{selectedIds.size} selecionada(s)</span>
+                      <AddSelectionToProjectPopover
+                        ownerId={ownerId}
+                        sourceIds={Array.from(selectedIds)}
+                        onDone={() => setSelectedIds(new Set())}
+                      />
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                        Limpar seleção
+                      </Button>
+                    </div>
+                  )}
+                  <SourcesTable
+                    sources={filteredSources}
+                    visibleColumns={visibleColumns}
+                    onToggleFavorite={(source) =>
+                      toggleFavorite.mutate({ id: source.id, isFavorite: !source.is_favorite })
+                    }
+                    onEdit={openEditSource}
+                    onOpenLink={handleOpenLink}
+                    onOpenPdf={handleOpenPdf}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                    onToggleSelectAll={toggleSelectAll}
+                  />
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="projetos">
+            {ownerId && <ProjectsPanel ownerId={ownerId} allSources={sources} />}
+          </TabsContent>
+        </Tabs>
       </main>
 
       {ownerId && dialogOpen && (

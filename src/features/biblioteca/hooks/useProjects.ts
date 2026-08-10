@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
 import type { Tables } from "@/integrations/supabase/types";
@@ -20,5 +20,54 @@ export function useProjects(ownerId: string | undefined) {
       if (error) throw error;
       return data ?? [];
     },
+  });
+}
+
+export function useCreateProject(ownerId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, description }: { name: string; description: string }) => {
+      const { data, error } = await supabase
+        .from("projects")
+        .insert({ name, description: description || null, owner_id: ownerId as string })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectsQueryKey(ownerId) }),
+  });
+}
+
+export function useUpdateProject(ownerId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      name,
+      description,
+    }: {
+      id: string;
+      name: string;
+      description: string;
+    }) => {
+      const { error } = await supabase
+        .from("projects")
+        .update({ name, description: description || null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectsQueryKey(ownerId) }),
+  });
+}
+
+export function useDeleteProject(ownerId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("projects").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: projectsQueryKey(ownerId) }),
   });
 }

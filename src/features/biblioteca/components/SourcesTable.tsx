@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { ALL_COLUMNS, PERSON_ROLE_LABELS } from "../constants";
 import type { SourceRow } from "../hooks/useSources";
@@ -21,6 +22,9 @@ interface SourcesTableProps {
   onEdit: (source: SourceRow) => void;
   onOpenLink: (source: SourceRow) => void;
   onOpenPdf: (source: SourceRow) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: () => void;
 }
 
 type SortDirection = "asc" | "desc";
@@ -70,7 +74,11 @@ export function SourcesTable({
   onEdit,
   onOpenLink,
   onOpenPdf,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
 }: SourcesTableProps) {
+  const selectable = !!selectedIds && !!onToggleSelect;
   const [sortKey, setSortKey] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -122,6 +130,15 @@ export function SourcesTable({
       <Table>
         <TableHeader>
           <TableRow>
+            {selectable && (
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={sources.length > 0 && selectedIds!.size === sources.length}
+                  onCheckedChange={() => onToggleSelectAll?.()}
+                  aria-label="Selecionar todas"
+                />
+              </TableHead>
+            )}
             <TableHead>
               <button
                 className="flex items-center gap-1 font-medium hover:text-foreground"
@@ -148,6 +165,15 @@ export function SourcesTable({
         <TableBody>
           {sorted.map((source) => (
             <TableRow key={source.id} className="cursor-pointer" onClick={() => onEdit(source)}>
+              {selectable && (
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedIds!.has(source.id)}
+                    onCheckedChange={() => onToggleSelect?.(source.id)}
+                    aria-label={`Selecionar ${source.title}`}
+                  />
+                </TableCell>
+              )}
               <TableCell className="max-w-xs">
                 <div className="flex items-center gap-2">
                   {source.color_tag && !visibleColumns.includes("color_tag") && (
