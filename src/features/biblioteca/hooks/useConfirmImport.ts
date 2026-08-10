@@ -9,47 +9,8 @@ import {
   parseSemicolonList,
   type ImportCandidate,
 } from "../lib/import";
+import { dedupeByNormalized, upsertKeyword, upsertPerson } from "../lib/upsertLookup";
 import { sourcesQueryKey } from "./useSources";
-
-async function findOrCreatePerson(ownerId: string, fullName: string): Promise<string> {
-  const normalized = fullName.toLowerCase().trim();
-  const { data: existing, error: findError } = await supabase
-    .from("people")
-    .select("id")
-    .eq("owner_id", ownerId)
-    .eq("normalized_name", normalized)
-    .maybeSingle();
-  if (findError) throw findError;
-  if (existing) return existing.id;
-
-  const { data: created, error: createError } = await supabase
-    .from("people")
-    .insert({ full_name: fullName, owner_id: ownerId })
-    .select("id")
-    .single();
-  if (createError) throw createError;
-  return created.id;
-}
-
-async function findOrCreateKeyword(ownerId: string, label: string): Promise<string> {
-  const normalized = label.toLowerCase().trim();
-  const { data: existing, error: findError } = await supabase
-    .from("keywords")
-    .select("id")
-    .eq("owner_id", ownerId)
-    .eq("normalized_label", normalized)
-    .maybeSingle();
-  if (findError) throw findError;
-  if (existing) return existing.id;
-
-  const { data: created, error: createError } = await supabase
-    .from("keywords")
-    .insert({ label, owner_id: ownerId })
-    .select("id")
-    .single();
-  if (createError) throw createError;
-  return created.id;
-}
 
 function sanitizeFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "_");
@@ -59,6 +20,11 @@ export interface ImportResult {
   inserted: number;
   duplicates: number;
   errors: { candidate: ImportCandidate; message: string }[];
+}
+
+/** Remove o registro de sources (e, em cascata, source_people/source_keywords/source_tags) já inseridos para esta fonte. */
+async function rollbackSource(sourceId: string) {
+  await supabase.from("sources").delete().eq("id", sourceId);
 }
 
 export function useConfirmImport(ownerId: string | undefined) {
@@ -94,9 +60,10 @@ export function useConfirmImport(ownerId: string | undefined) {
         }
         seenInBatch.add(chaveDoc);
 
-        try {
-          const sourceId = crypto.randomUUID();
+        const sourceId = crypto.randomUUID();
+        let sourceInserted = false;
 
+        try {
           let pdfStoragePath: string | null = null;
           let hasPdf = false;
           if (candidate.pdfFile) {
@@ -131,12 +98,18 @@ export function useConfirmImport(ownerId: string | undefined) {
 
           const { error: insertError } = await supabase.from("sources").insert(payload);
           if (insertError) throw insertError;
+          sourceInserted = true;
 
-          const authorNames = parseSemicolonList(candidate.authors);
+          // Autores: deduplicados e resolvidos sequencialmente (upsert seguro contra corrida,
+          // uma pessoa por vez) para que duplicatas dentro da mesma entrada, ou colisão com uma
+          // pessoa já criada por outra fonte, nunca derrubem a fonte inteira nem se percam.
+          const authorNames = dedupeByNormalized(parseSemicolonList(candidate.authors));
           if (authorNames.length > 0) {
-            const personIds = await Promise.all(
-              authorNames.map((name) => findOrCreatePerson(ownerId, name)),
-            );
+            const personIds: string[] = [];
+            for (const name of authorNames) {
+              const person = await upsertPerson(ownerId, name);
+              personIds.push(person.id);
+            }
             const { error } = await supabase.from("source_people").insert(
               personIds.map((person_id, index) => ({
                 source_id: sourceId,
@@ -148,11 +121,14 @@ export function useConfirmImport(ownerId: string | undefined) {
             if (error) throw error;
           }
 
-          const keywordLabels = parseKeywordList(candidate.keywords);
+          // Palavras-chave: mesma lógica — dedupe + upsert sequencial seguro contra corrida.
+          const keywordLabels = dedupeByNormalized(parseKeywordList(candidate.keywords));
           if (keywordLabels.length > 0) {
-            const keywordIds = await Promise.all(
-              keywordLabels.map((label) => findOrCreateKeyword(ownerId, label)),
-            );
+            const keywordIds: string[] = [];
+            for (const label of keywordLabels) {
+              const keyword = await upsertKeyword(ownerId, label);
+              keywordIds.push(keyword.id);
+            }
             const { error } = await supabase
               .from("source_keywords")
               .insert(keywordIds.map((keyword_id) => ({ source_id: sourceId, keyword_id })));
@@ -162,6 +138,10 @@ export function useConfirmImport(ownerId: string | undefined) {
           result.inserted += 1;
           existingMap.set(chaveDoc, { id: sourceId, title: candidate.title.trim() });
         } catch (error) {
+          // Transacional na prática: se qualquer etapa após a criação da fonte falhar, a fonte
+          // é removida (cascade limpa source_people/source_keywords/source_tags) em vez de ficar
+          // salva com um subconjunto incompleto de autores/palavras-chave.
+          if (sourceInserted) await rollbackSource(sourceId);
           result.errors.push({
             candidate,
             message: error instanceof Error ? error.message : "Erro desconhecido.",

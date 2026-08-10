@@ -220,13 +220,13 @@ export function SourceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl gap-0 p-0">
-        <DialogHeader className="border-b px-6 py-4">
+      <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>{source ? "Editar fonte" : "Nova fonte"}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <ScrollArea className="max-h-[65vh]">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-6 px-6 py-4">
               {duplicate && (
                 <Alert variant="destructive">
@@ -544,7 +544,7 @@ export function SourceFormDialog({
             </div>
           </ScrollArea>
 
-          <DialogFooter className="border-t px-6 py-4">
+          <DialogFooter className="shrink-0 border-t px-6 py-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
