@@ -30,7 +30,9 @@ function oauthApi(): OAuthApi {
 export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
   validateSearch: (search: Record<string, unknown>) => ({
-    authorization_id: typeof search.authorization_id === "string" ? search.authorization_id : "",
+    authorization_id:
+      typeof search["authorization_id"] === "string" ? search["authorization_id"] : "",
+
   }),
   beforeLoad: async ({ search, location }) => {
     if (!search.authorization_id) throw new Error("Parâmetro authorization_id ausente.");
