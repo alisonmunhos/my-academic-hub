@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { BookMarked, Loader2, LogOut, Plus } from "lucide-react";
+import { BookMarked, ListOrdered, Loader2, LogOut, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
 import { AddSelectionToProjectPopover } from "@/features/biblioteca/components/AddSelectionToProjectPopover";
+import { BatchCiteDialog } from "@/features/biblioteca/components/BatchCiteDialog";
+import { CiteDialog } from "@/features/biblioteca/components/CiteDialog";
 import { ColumnVisibilityMenu } from "@/features/biblioteca/components/ColumnVisibilityMenu";
 import { FilterPanel } from "@/features/biblioteca/components/FilterPanel";
 import { ProjectsPanel } from "@/features/biblioteca/components/ProjectsPanel";
@@ -57,9 +59,16 @@ function BibliotecaPage() {
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const [filters, setFilters] = useState(createEmptyFilterState);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [citingSourceId, setCitingSourceId] = useState<string | null>(null);
+  const [batchCiteOpen, setBatchCiteOpen] = useState(false);
 
   const editingSource: SourceRow | null = sources.find((s) => s.id === editingSourceId) ?? null;
+  const citingSource: SourceRow | null = sources.find((s) => s.id === citingSourceId) ?? null;
   const filteredSources = useMemo(() => filterSources(sources, filters), [sources, filters]);
+  const selectedSources = useMemo(
+    () => filteredSources.filter((s) => selectedIds.has(s.id)),
+    [filteredSources, selectedIds],
+  );
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -190,6 +199,10 @@ function BibliotecaPage() {
                         sourceIds={Array.from(selectedIds)}
                         onDone={() => setSelectedIds(new Set())}
                       />
+                      <Button variant="outline" size="sm" onClick={() => setBatchCiteOpen(true)}>
+                        <ListOrdered className="size-4" />
+                        Gerar referências
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
                         Limpar seleção
                       </Button>
@@ -204,6 +217,7 @@ function BibliotecaPage() {
                     onEdit={openEditSource}
                     onOpenLink={handleOpenLink}
                     onOpenPdf={handleOpenPdf}
+                    onCite={(source) => setCitingSourceId(source.id)}
                     selectedIds={selectedIds}
                     onToggleSelect={toggleSelect}
                     onToggleSelectAll={toggleSelectAll}
@@ -229,6 +243,12 @@ function BibliotecaPage() {
           onSwitchToSource={switchToSource}
         />
       )}
+
+      <CiteDialog source={citingSource} onOpenChange={() => setCitingSourceId(null)} />
+      <BatchCiteDialog
+        sources={batchCiteOpen ? selectedSources : null}
+        onOpenChange={() => setBatchCiteOpen(false)}
+      />
     </div>
   );
 }
