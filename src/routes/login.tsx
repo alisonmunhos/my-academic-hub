@@ -7,11 +7,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
+function safeNext(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return undefined;
+  return value;
+}
+
 export const Route = createFileRoute("/login")({
-  beforeLoad: async () => {
+  validateSearch: (search: Record<string, unknown>) => {
+    const next = safeNext(search["next"]);
+    return next ? { next } : {};
+  },
+  beforeLoad: async ({ search }) => {
     if (!supabase || typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
-    if (data.session) throw redirect({ to: "/biblioteca" });
+    if (!data.session) return;
+    const next = safeNext((search as { next?: string }).next);
+    if (next) throw redirect({ href: next });
+    throw redirect({ to: "/biblioteca" });
   },
   head: () => ({
     meta: [
@@ -32,6 +44,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch() as { next?: string };
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -55,6 +68,11 @@ function LoginPage() {
       return;
     }
 
+    const next = safeNext(search.next);
+    if (next) {
+      window.location.replace(next);
+      return;
+    }
     navigate({ to: "/biblioteca", replace: true });
   }
 
