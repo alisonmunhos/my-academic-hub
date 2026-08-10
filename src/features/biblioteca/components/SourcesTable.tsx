@@ -128,8 +128,9 @@ export function SourcesTable({
   }
 
   return (
-    <div className="rounded-lg border">
-      <Table>
+    <div className="w-full overflow-x-auto overscroll-x-contain rounded-lg border">
+      <Table className="w-max min-w-full">
+
         <TableHeader>
           <TableRow>
             {selectable && (

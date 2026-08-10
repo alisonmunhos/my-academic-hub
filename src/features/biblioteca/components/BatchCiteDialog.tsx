@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { getCitations, sortSourcesAlphabetically } from "../lib/citations";
 import type { SourceRow } from "../hooks/useSources";
 
@@ -28,12 +28,12 @@ export function BatchCiteDialog({ sources, onOpenChange }: BatchCiteDialogProps)
 
   return (
     <Dialog open={!!sources} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl gap-4">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] max-w-xl flex-col gap-4 sm:max-h-[85vh]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Referências ({references.length})</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[50vh] rounded-md border">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-md border">
           <div className="space-y-3 p-4">
             {references.map((ref, index) => (
               <p key={sorted[index]?.id ?? index} className="text-sm">
@@ -41,13 +41,14 @@ export function BatchCiteDialog({ sources, onOpenChange }: BatchCiteDialogProps)
               </p>
             ))}
           </div>
-        </ScrollArea>
+        </div>
 
-        <Button type="button" onClick={copyAll} className="w-full">
+        <Button type="button" onClick={copyAll} className="w-full shrink-0">
           <Copy className="size-4" />
           Copiar lista completa
         </Button>
       </DialogContent>
+
     </Dialog>
   );
 }
