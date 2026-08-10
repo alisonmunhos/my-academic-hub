@@ -15,17 +15,23 @@ export type SourceTagRow = {
   tags: Pick<Tables<"tags">, "id" | "label" | "color"> | null;
 };
 
+export type SourceProjectRow = {
+  project_id: string;
+};
+
 export type SourceRow = Tables<"sources"> & {
   source_people: SourcePersonRow[];
   source_keywords: SourceKeywordRow[];
   source_tags: SourceTagRow[];
+  project_sources: SourceProjectRow[];
 };
 
 export const sourcesQueryKey = (ownerId: string | undefined) => ["sources", ownerId] as const;
 
 const SOURCE_SELECT =
   "*, source_people(source_id, person_id, role, position, people(id, full_name)), " +
-  "source_keywords(keywords(id, label)), source_tags(tags(id, label, color))";
+  "source_keywords(keywords(id, label)), source_tags(tags(id, label, color)), " +
+  "project_sources(project_id)";
 
 export function useSources(ownerId: string | undefined) {
   return useQuery({
