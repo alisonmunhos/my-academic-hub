@@ -1,0 +1,299 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.2",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://ceskhsmgnazliclfwxqs.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "biblioteca-de-referencias",
+      "version": "0.1.0",
+      "title": "Biblioteca de Referências"
+    },
+    "tools": [
+      {
+        "name": "search_sources",
+        "title": "Buscar referências",
+        "description": "Busca referências da biblioteca do usuário por texto (título, revista, DOI), tipo, ano ou status de leitura.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Texto livre buscado em título, revista/editora e DOI."
+            },
+            "source_type": {
+              "type": "string",
+              "description": "Tipo da fonte, ex.: article, book, thesis."
+            },
+            "status_reading": {
+              "type": "string",
+              "description": "Status de leitura, ex.: to_read, reading, read."
+            },
+            "year": {
+              "type": "integer",
+              "description": "Ano de publicação exato."
+            },
+            "favorites_only": {
+              "type": "boolean",
+              "description": "Retornar apenas favoritas."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Máximo de resultados (padrão 20, teto 100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_source",
+        "title": "Ver referência",
+        "description": "Retorna todos os dados de uma referência, incluindo autores, palavras-chave, tags e citação ABNT.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "ID (uuid) da referência."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_source",
+        "title": "Adicionar referência",
+        "description": "Cria uma nova referência na biblioteca do usuário. Use apenas os campos conhecidos; os demais podem ser preenchidos depois no app.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Título da fonte."
+            },
+            "source_type": {
+              "type": "string",
+              "description": "Tipo da fonte (padrão: article). Ex.: article, book, thesis, website."
+            },
+            "year": {
+              "type": "integer",
+              "description": "Ano de publicação."
+            },
+            "container_title": {
+              "type": "string",
+              "description": "Revista, livro ou evento onde foi publicado."
+            },
+            "publisher": {
+              "type": "string",
+              "description": "Editora ou instituição."
+            },
+            "doi": {
+              "type": "string",
+              "description": "DOI da publicação."
+            },
+            "url": {
+              "type": "string",
+              "description": "URL de acesso."
+            },
+            "abstract": {
+              "type": "string",
+              "description": "Resumo da fonte."
+            },
+            "personal_notes": {
+              "type": "string",
+              "description": "Notas pessoais sobre a fonte."
+            },
+            "status_reading": {
+              "type": "string",
+              "description": "Status de leitura (padrão: to_read)."
+            }
+          },
+          "required": [
+            "title"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_source",
+        "title": "Atualizar referência",
+        "description": "Atualiza campos de uma referência existente. Apenas os campos informados são alterados.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "ID (uuid) da referência."
+            },
+            "title": {
+              "type": "string",
+              "description": "Novo título."
+            },
+            "source_type": {
+              "type": "string",
+              "description": "Novo tipo da fonte."
+            },
+            "year": {
+              "type": "integer",
+              "description": "Novo ano de publicação."
+            },
+            "container_title": {
+              "type": "string",
+              "description": "Nova revista/livro/evento."
+            },
+            "publisher": {
+              "type": "string",
+              "description": "Nova editora."
+            },
+            "doi": {
+              "type": "string",
+              "description": "Novo DOI."
+            },
+            "url": {
+              "type": "string",
+              "description": "Nova URL."
+            },
+            "abstract": {
+              "type": "string",
+              "description": "Novo resumo."
+            },
+            "personal_notes": {
+              "type": "string",
+              "description": "Novas notas pessoais."
+            },
+            "status_reading": {
+              "type": "string",
+              "description": "Novo status de leitura."
+            },
+            "is_favorite": {
+              "type": "boolean",
+              "description": "Marcar ou desmarcar como favorita."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_projects",
+        "title": "Listar projetos",
+        "description": "Lista os projetos (coleções de referências) do usuário, com a quantidade de referências em cada um.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Filtra projetos pelo nome."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_project_sources",
+        "title": "Ver referências de um projeto",
+        "description": "Lista as referências que pertencem a um projeto (coleção) do usuário.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "description": "ID (uuid) do projeto."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Máximo de referências (padrão 50, teto 200)."
+            }
+          },
+          "required": [
+            "project_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_source_to_project",
+        "title": "Adicionar referência a um projeto",
+        "description": "Vincula uma referência existente a um projeto (coleção) do usuário.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "description": "ID (uuid) do projeto."
+            },
+            "source_id": {
+              "type": "string",
+              "description": "ID (uuid) da referência."
+            }
+          },
+          "required": [
+            "project_id",
+            "source_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
