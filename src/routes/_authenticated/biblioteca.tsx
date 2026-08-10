@@ -171,8 +171,8 @@ function BibliotecaPage() {
           </TabsList>
 
           <TabsContent value="referencias">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="min-w-0 text-lg font-semibold">
                 Minhas referências
                 {!isLoading && (
                   <span className="ml-2 text-sm font-normal text-muted-foreground">
@@ -180,7 +180,16 @@ function BibliotecaPage() {
                   </span>
                 )}
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="lg:hidden"
+                  onClick={() => setFiltersOpen(true)}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  Filtros
+                </Button>
                 <ColumnVisibilityMenu
                   visibleColumns={visibleColumns}
                   onChange={(columns) => setVisibleColumns.mutate(columns)}
