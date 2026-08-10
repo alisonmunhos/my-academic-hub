@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "biblioteca-de-referencias",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Biblioteca de Referências"
     },
     "tools": [
@@ -51,6 +51,155 @@
             "limit": {
               "type": "integer",
               "description": "Máximo de resultados (padrão 20, teto 100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_sources_by_person",
+        "title": "Buscar referências por autor",
+        "description": "Lista as referências associadas a uma pessoa (autor, orientador etc.), buscando pelo nome parcial ou completo.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Nome (ou parte do nome) da pessoa."
+            },
+            "role": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Filtra pelo papel, ex.: autor, orientador."
+            },
+            "limit": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Máximo de resultados (padrão 50, teto 200)."
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_sources_by_term",
+        "title": "Buscar referências por palavra-chave ou tag",
+        "description": "Lista as referências associadas a uma palavra-chave ou a uma tag do usuário. Use list_terms antes para descobrir os termos existentes.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "term": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Palavra-chave ou tag (busca por texto parcial)."
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "keyword",
+                    "tag",
+                    "both"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Onde buscar: keyword, tag ou both (padrão both)."
+            },
+            "limit": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Máximo de resultados (padrão 50, teto 200)."
+            }
+          },
+          "required": [
+            "term"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_terms",
+        "title": "Listar palavras-chave e tags",
+        "description": "Lista as palavras-chave e as tags existentes na biblioteca do usuário, para depois filtrar referências por elas.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Filtra por texto parcial no termo."
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "keyword",
+                    "tag",
+                    "both"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "O que listar: keyword, tag ou both (padrão both)."
+            },
+            "limit": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Máximo de itens por tipo (padrão 100, teto 500)."
             }
           },
           "additionalProperties": false,
@@ -214,6 +363,71 @@
         "outputSchema": null
       },
       {
+        "name": "delete_source",
+        "title": "Excluir referência",
+        "description": "Exclui permanentemente uma referência da biblioteca do usuário, junto com seus vínculos de autores, palavras-chave, tags e projetos. Ação destrutiva: confirme com o usuário antes de executar.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "source_id": {
+              "type": "string",
+              "description": "ID (uuid) da referência a excluir."
+            }
+          },
+          "required": [
+            "source_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "cite_sources",
+        "title": "Gerar citações em lote",
+        "description": "Devolve as citações ABNT (completa, integrada e parentética) já salvas para uma lista de referências, ou para todas as referências de um projeto.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "source_ids": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "IDs (uuid) das referências. Ignorado quando project_id é informado."
+            },
+            "project_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "ID (uuid) de um projeto: cita todas as referências vinculadas a ele."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_projects",
         "title": "Listar projetos",
         "description": "Lista os projetos (coleções de referências) do usuário, com a quantidade de referências em cada um.",
@@ -230,6 +444,39 @@
               "description": "Filtra projetos pelo nome."
             }
           },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_project",
+        "title": "Criar projeto",
+        "description": "Cria um novo projeto (coleção de referências) para o usuário.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Nome do projeto."
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Descrição opcional do projeto."
+            }
+          },
+          "required": [
+            "name"
+          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -271,6 +518,37 @@
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "project_id": {
+              "type": "string",
+              "description": "ID (uuid) do projeto."
+            },
+            "source_id": {
+              "type": "string",
+              "description": "ID (uuid) da referência."
+            }
+          },
+          "required": [
+            "project_id",
+            "source_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "remove_source_from_project",
+        "title": "Remover referência de um projeto",
+        "description": "Desvincula uma referência de um projeto (coleção). A referência continua existindo na biblioteca.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
           "openWorldHint": false
         },
         "inputSchema": {
