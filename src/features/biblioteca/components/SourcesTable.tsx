@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, FileText, Star } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, FileText, Quote, Star } from "lucide-react";
 
 import {
   Table,
@@ -22,6 +22,7 @@ interface SourcesTableProps {
   onEdit: (source: SourceRow) => void;
   onOpenLink: (source: SourceRow) => void;
   onOpenPdf: (source: SourceRow) => void;
+  onCite: (source: SourceRow) => void;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
   onToggleSelectAll?: () => void;
@@ -74,6 +75,7 @@ export function SourcesTable({
   onEdit,
   onOpenLink,
   onOpenPdf,
+  onCite,
   selectedIds,
   onToggleSelect,
   onToggleSelectAll,
@@ -159,7 +161,7 @@ export function SourcesTable({
                 </button>
               </TableHead>
             ))}
-            <TableHead className="w-10" />
+            <TableHead className="w-10">Citar</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -215,7 +217,18 @@ export function SourcesTable({
                   {renderCell(column.key, source, onToggleFavorite)}
                 </TableCell>
               ))}
-              <TableCell />
+              <TableCell onClick={(e) => e.stopPropagation()}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={() => onCite(source)}
+                  aria-label="Citar"
+                >
+                  <Quote className="size-3.5" />
+                </Button>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
