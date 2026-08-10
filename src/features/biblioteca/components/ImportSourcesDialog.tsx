@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Link2, Loader2, Plus } from "lucide-react";
+import { CheckCircle2, FileText, Link2, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -22,6 +22,7 @@ import {
   getCandidateStatus,
   type ImportCandidate,
 } from "../lib/import";
+import { parseRisFiles } from "../lib/ris";
 import type { SourceRow } from "../hooks/useSources";
 import { ImportReviewTable, type DuplicateInfo } from "./ImportReviewTable";
 
@@ -33,7 +34,7 @@ interface ImportSourcesDialogProps {
   onOpenExisting: (id: string) => void;
 }
 
-type Step = "choose" | "link" | "review" | "result";
+type Step = "choose" | "link" | "ris" | "review" | "result";
 
 export function ImportSourcesDialog({
   ownerId,
@@ -46,6 +47,7 @@ export function ImportSourcesDialog({
   const [candidates, setCandidates] = useState<ImportCandidate[]>([]);
   const [linkUrl, setLinkUrl] = useState("");
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [risLoading, setRisLoading] = useState(false);
 
   const extractMetadata = useExtractMetadata();
   const confirmImport = useConfirmImport(ownerId);
@@ -102,6 +104,27 @@ export function ImportSourcesDialog({
     }
   }
 
+  async function handleRisFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    setRisLoading(true);
+    try {
+      const files = Array.from(fileList);
+      const parsed = await parseRisFiles(files);
+      if (parsed.length === 0) {
+        toast.warning("Nenhuma entrada RIS válida encontrada no(s) arquivo(s).");
+        return;
+      }
+      setCandidates((prev) => [...prev, ...parsed]);
+      setStep("review");
+      toast.success(`${parsed.length} entrada(s) encontrada(s) em ${files.length} arquivo(s).`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível ler o(s) arquivo(s) RIS.");
+    } finally {
+      setRisLoading(false);
+    }
+  }
+
   function updateCandidate(localId: string, patch: Partial<ImportCandidate>) {
     setCandidates((prev) => prev.map((c) => (c.localId === localId ? { ...c, ...patch } : c)));
   }
@@ -148,6 +171,20 @@ export function ImportSourcesDialog({
                 </p>
               </div>
             </button>
+
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-lg border p-4 text-left hover:border-primary/50 hover:bg-accent/50"
+              onClick={() => setStep("ris")}
+            >
+              <FileText className="size-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Importar arquivo RIS</p>
+                <p className="text-xs text-muted-foreground">
+                  Um ou vários arquivos .ris exportados do Mendeley, Zotero etc.
+                </p>
+              </div>
+            </button>
           </div>
         )}
 
@@ -167,6 +204,32 @@ export function ImportSourcesDialog({
               Tentamos extrair metadados estruturados da página (citation_*, Dublin Core, Open
               Graph). Se nada for encontrado, você poderá preencher os campos manualmente na tela de
               revisão.
+            </p>
+          </div>
+        )}
+
+        {step === "ris" && (
+          <div className="space-y-4 px-6 py-6">
+            <div className="space-y-1.5">
+              <Label htmlFor="import-ris">Arquivo(s) .ris</Label>
+              <Input
+                id="import-ris"
+                type="file"
+                accept=".ris"
+                multiple
+                disabled={risLoading}
+                onChange={(e) => handleRisFiles(e.target.files)}
+              />
+            </div>
+            {risLoading && (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="size-3.5 animate-spin" />
+                Lendo arquivo(s)...
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Cada entrada do arquivo vira uma linha na tela de revisão, com checagem de duplicata
+              automática antes de importar.
             </p>
           </div>
         )}
