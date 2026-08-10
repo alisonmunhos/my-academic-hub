@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { BookMarked, ListOrdered, Loader2, LogOut, Plus, Upload } from "lucide-react";
+import { BookMarked, ListOrdered, Loader2, LogOut, Plus, SlidersHorizontal, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
 import { AddSelectionToProjectPopover } from "@/features/biblioteca/components/AddSelectionToProjectPopover";
@@ -65,6 +66,7 @@ function BibliotecaPage() {
   const [citingSourceId, setCitingSourceId] = useState<string | null>(null);
   const [batchCiteOpen, setBatchCiteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const editingSource: SourceRow | null = sources.find((s) => s.id === editingSourceId) ?? null;
   const citingSource: SourceRow | null = sources.find((s) => s.id === citingSourceId) ?? null;
@@ -169,8 +171,8 @@ function BibliotecaPage() {
           </TabsList>
 
           <TabsContent value="referencias">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="min-w-0 text-lg font-semibold">
                 Minhas referências
                 {!isLoading && (
                   <span className="ml-2 text-sm font-normal text-muted-foreground">
@@ -178,7 +180,16 @@ function BibliotecaPage() {
                   </span>
                 )}
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="lg:hidden"
+                  onClick={() => setFiltersOpen(true)}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  Filtros
+                </Button>
                 <ColumnVisibilityMenu
                   visibleColumns={visibleColumns}
                   onChange={(columns) => setVisibleColumns.mutate(columns)}
@@ -201,13 +212,34 @@ function BibliotecaPage() {
             ) : (
               <div className="flex items-start gap-4">
                 {ownerId && (
-                  <FilterPanel
-                    ownerId={ownerId}
-                    sources={sources}
-                    filters={filters}
-                    onChange={setFilters}
-                  />
+                  <>
+                    <div className="hidden lg:block">
+                      <FilterPanel
+                        ownerId={ownerId}
+                        sources={sources}
+                        filters={filters}
+                        onChange={setFilters}
+                      />
+                    </div>
+                    <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                      <SheetContent
+                        side="left"
+                        className="flex w-[90vw] max-w-sm flex-col gap-4 overflow-y-auto overscroll-contain"
+                      >
+                        <SheetHeader>
+                          <SheetTitle>Filtros</SheetTitle>
+                        </SheetHeader>
+                        <FilterPanel
+                          ownerId={ownerId}
+                          sources={sources}
+                          filters={filters}
+                          onChange={setFilters}
+                        />
+                      </SheetContent>
+                    </Sheet>
+                  </>
                 )}
+
                 <div className="min-w-0 flex-1 space-y-3">
                   {selectedIds.size > 0 && ownerId && (
                     <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">

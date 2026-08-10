@@ -116,7 +116,7 @@ export function FilterPanel({ ownerId, sources, filters, onChange }: FilterPanel
   const empty = isFilterStateEmpty(filters);
 
   return (
-    <aside className="w-72 shrink-0 space-y-4 rounded-lg border p-4">
+    <aside className="w-full shrink-0 space-y-4 rounded-lg border p-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)] lg:w-72 lg:overflow-y-auto lg:overscroll-contain">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Filtros</h2>
         {!empty && (
