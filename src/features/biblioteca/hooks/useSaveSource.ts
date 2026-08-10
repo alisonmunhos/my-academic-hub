@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { buildChaveDoc } from "../lib/academic";
+import { generateUniqueSlug } from "../lib/slug";
 import { sourcesQueryKey } from "./useSources";
 import type { PersonRole } from "../constants";
 
@@ -15,13 +16,19 @@ export interface PersonEntry {
 
 export interface SaveSourceInput {
   id: string | null;
-  values: Omit<TablesInsert<"sources">, "id" | "owner_id" | "chave_doc">;
+  values: Omit<TablesInsert<"sources">, "id" | "owner_id" | "chave_doc" | "public_slug">;
   people: PersonEntry[];
   keywordIds: string[];
   tagIds: string[];
   pdfFile: File | null;
   removePdf: boolean;
   existingPdfPath: string | null | undefined;
+  existingPublicSlug: string | null | undefined;
+}
+
+export interface SaveSourceResult {
+  id: string;
+  publicSlug: string | null;
 }
 
 export class DuplicateSourceError extends Error {
@@ -86,6 +93,11 @@ export function useSaveSource(ownerId: string | undefined) {
         hasPdf = true;
       }
 
+      let publicSlug = input.existingPublicSlug ?? null;
+      if (input.values.is_public && !publicSlug) {
+        publicSlug = await generateUniqueSlug("sources", input.values.title);
+      }
+
       const payload: TablesInsert<"sources"> = {
         ...input.values,
         id: sourceId,
@@ -93,6 +105,7 @@ export function useSaveSource(ownerId: string | undefined) {
         chave_doc: chaveDoc,
         has_pdf: hasPdf,
         pdf_storage_path: pdfStoragePath,
+        public_slug: publicSlug,
       };
 
       const { error: upsertError } = await supabase.from("sources").upsert(payload);
@@ -127,7 +140,7 @@ export function useSaveSource(ownerId: string | undefined) {
         if (error) throw error;
       }
 
-      return sourceId;
+      return { id: sourceId, publicSlug } satisfies SaveSourceResult;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: sourcesQueryKey(ownerId) }),
   });
