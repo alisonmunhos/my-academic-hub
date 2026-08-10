@@ -10,6 +10,18 @@ import updateSourceTool from "./tools/update-source";
 
 const projectRef = import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "project-ref-unset";
 
+type McpTools = Parameters<typeof defineMcp>[0]["tools"];
+
+const tools = [
+  searchSourcesTool,
+  getSourceTool,
+  createSourceTool,
+  updateSourceTool,
+  listProjectsTool,
+  listProjectSourcesTool,
+  addSourceToProjectTool,
+] as unknown as McpTools;
+
 export default defineMcp({
   name: "biblioteca-de-referencias",
   title: "Biblioteca de Referências",
@@ -20,13 +32,6 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [
-    searchSourcesTool,
-    getSourceTool,
-    createSourceTool,
-    updateSourceTool,
-    listProjectsTool,
-    listProjectSourcesTool,
-    addSourceToProjectTool,
-  ],
+  tools,
 });
+
