@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { BookMarked, ListOrdered, Loader2, LogOut, Plus, Upload } from "lucide-react";
+import { BookMarked, ListOrdered, Loader2, LogOut, Plus, SlidersHorizontal, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
 import { AddSelectionToProjectPopover } from "@/features/biblioteca/components/AddSelectionToProjectPopover";
@@ -65,6 +66,7 @@ function BibliotecaPage() {
   const [citingSourceId, setCitingSourceId] = useState<string | null>(null);
   const [batchCiteOpen, setBatchCiteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const editingSource: SourceRow | null = sources.find((s) => s.id === editingSourceId) ?? null;
   const citingSource: SourceRow | null = sources.find((s) => s.id === citingSourceId) ?? null;
