@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { BookMarked, ListOrdered, Loader2, LogOut, Plus } from "lucide-react";
+import { BookMarked, ListOrdered, Loader2, LogOut, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { CiteDialog } from "@/features/biblioteca/components/CiteDialog";
 import { ColumnVisibilityMenu } from "@/features/biblioteca/components/ColumnVisibilityMenu";
 import { DuplicatesPanel } from "@/features/biblioteca/components/DuplicatesPanel";
 import { FilterPanel } from "@/features/biblioteca/components/FilterPanel";
+import { ImportSourcesDialog } from "@/features/biblioteca/components/ImportSourcesDialog";
 import { ProjectsPanel } from "@/features/biblioteca/components/ProjectsPanel";
 import { SourceFormDialog } from "@/features/biblioteca/components/SourceFormDialog";
 import { SourcesTable } from "@/features/biblioteca/components/SourcesTable";
@@ -63,6 +64,7 @@ function BibliotecaPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [citingSourceId, setCitingSourceId] = useState<string | null>(null);
   const [batchCiteOpen, setBatchCiteOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const editingSource: SourceRow | null = sources.find((s) => s.id === editingSourceId) ?? null;
   const citingSource: SourceRow | null = sources.find((s) => s.id === citingSourceId) ?? null;
@@ -181,6 +183,10 @@ function BibliotecaPage() {
                   visibleColumns={visibleColumns}
                   onChange={(columns) => setVisibleColumns.mutate(columns)}
                 />
+                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                  <Upload className="size-4" />
+                  Importar fontes
+                </Button>
                 <Button size="sm" onClick={openNewSource}>
                   <Plus className="size-4" />
                   Nova fonte
@@ -266,6 +272,15 @@ function BibliotecaPage() {
         sources={batchCiteOpen ? selectedSources : null}
         onOpenChange={() => setBatchCiteOpen(false)}
       />
+      {ownerId && (
+        <ImportSourcesDialog
+          ownerId={ownerId}
+          sources={sources}
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onOpenExisting={switchToSource}
+        />
+      )}
     </div>
   );
 }
