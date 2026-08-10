@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, Copy, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import {
   useAddSourcesToProject,
   useProjectSources,
   useRemoveSourceFromProject,
 } from "../hooks/useProjectSources";
-import type { ProjectOption } from "../hooks/useProjects";
+import { useToggleProjectPublic, type ProjectOption } from "../hooks/useProjects";
 import type { SourceRow } from "../hooks/useSources";
 
 interface ProjectDetailProps {
@@ -31,8 +33,32 @@ export function ProjectDetail({ ownerId, project, allSources, onBack }: ProjectD
   const { data: entries = [], isLoading } = useProjectSources(project.id);
   const addSources = useAddSourcesToProject(ownerId);
   const removeSource = useRemoveSourceFromProject(ownerId);
+  const togglePublic = useToggleProjectPublic(ownerId);
   const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
+
+  async function handleTogglePublic(isPublic: boolean) {
+    try {
+      await togglePublic.mutateAsync({
+        id: project.id,
+        name: project.name,
+        isPublic,
+        existingSlug: project.public_slug,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível atualizar o compartilhamento.");
+    }
+  }
+
+  async function copyPublicLink(slug: string) {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/p/${slug}`);
+      toast.success("Link copiado.");
+    } catch {
+      toast.error("Não foi possível copiar. Selecione e copie manualmente.");
+    }
+  }
 
   const memberIds = new Set(entries.map((e) => e.source_id));
   const candidates = allSources.filter(
@@ -70,6 +96,37 @@ export function ProjectDetail({ ownerId, project, allSources, onBack }: ProjectD
         <h2 className="text-lg font-semibold">{project.name}</h2>
         {project.description && (
           <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
+        )}
+      </div>
+
+      <div className="space-y-2 rounded-md border px-3 py-2.5">
+        <div className="flex items-center justify-between gap-4">
+          <Label htmlFor="project-is-public" className="text-sm font-medium">
+            Compartilhar por link (público)
+          </Label>
+          <Switch
+            id="project-is-public"
+            checked={project.is_public}
+            disabled={togglePublic.isPending}
+            onCheckedChange={handleTogglePublic}
+          />
+        </div>
+        {project.is_public && project.public_slug && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="flex-1 truncate text-muted-foreground">
+              {`${window.location.origin}/p/${project.public_slug}`}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2"
+              onClick={() => copyPublicLink(project.public_slug!)}
+            >
+              <Copy className="size-3" />
+              Copiar
+            </Button>
+          </div>
         )}
       </div>
 

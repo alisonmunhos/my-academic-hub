@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertTriangle, FileText, Loader2, X } from "lucide-react";
+import { AlertTriangle, Copy, FileText, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -140,23 +140,38 @@ export function SourceFormDialog({
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [removePdf, setRemovePdf] = useState(false);
   const [duplicate, setDuplicate] = useState<{ id: string; title: string } | null>(null);
+  const [publicSlugPreview, setPublicSlugPreview] = useState<string | null>(
+    source?.public_slug ?? null,
+  );
 
   const {
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: toDefaults(source),
   });
 
+  const isPublicWatch = watch("is_public");
+
   const hasExistingPdf = !!source?.pdf_storage_path && !removePdf;
+
+  async function copyPublicLink(slug: string) {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/s/${slug}`);
+      toast.success("Link copiado.");
+    } catch {
+      toast.error("Não foi possível copiar. Selecione e copie manualmente.");
+    }
+  }
 
   async function onSubmit(values: FormValues) {
     setDuplicate(null);
     try {
-      await saveSource.mutateAsync({
+      const result = await saveSource.mutateAsync({
         id: source?.id ?? null,
         values: {
           source_type: values.source_type,
@@ -185,9 +200,14 @@ export function SourceFormDialog({
         pdfFile,
         removePdf,
         existingPdfPath: source?.pdf_storage_path ?? null,
+        existingPublicSlug: source?.public_slug ?? null,
       });
       toast.success(source ? "Fonte atualizada." : "Fonte criada.");
-      onOpenChange(false);
+      const justPublished = values.is_public && !source?.public_slug && !!result.publicSlug;
+      setPublicSlugPreview(result.publicSlug);
+      if (!justPublished) {
+        onOpenChange(false);
+      }
     } catch (error) {
       if (error instanceof DuplicateSourceError) {
         setDuplicate(error.existing);
@@ -439,6 +459,30 @@ export function SourceFormDialog({
                     )}
                   />
                 </div>
+
+                {isPublicWatch && (
+                  <div className="col-span-2 rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                    {publicSlugPreview ? (
+                      <div className="flex items-center gap-2">
+                        <span className="flex-1 truncate text-muted-foreground">
+                          {`${window.location.origin}/s/${publicSlugPreview}`}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2"
+                          onClick={() => copyPublicLink(publicSlugPreview)}
+                        >
+                          <Copy className="size-3" />
+                          Copiar
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">O link será gerado ao salvar.</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
