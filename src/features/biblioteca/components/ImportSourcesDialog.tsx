@@ -167,8 +167,8 @@ export function ImportSourcesDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl gap-0 p-0">
-        <DialogHeader className="border-b px-6 py-4">
+      <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>Importar fontes</DialogTitle>
         </DialogHeader>
 
@@ -297,7 +297,7 @@ export function ImportSourcesDialog({
 
         {step === "review" && (
           <>
-            <ScrollArea className="max-h-[55vh]">
+            <ScrollArea className="min-h-0 flex-1">
               <div className="space-y-3 px-6 py-4">
                 <button
                   type="button"
@@ -319,7 +319,7 @@ export function ImportSourcesDialog({
                 />
               </div>
             </ScrollArea>
-            <div className="border-t px-6 py-3 text-xs text-muted-foreground">
+            <div className="shrink-0 border-t px-6 py-3 text-xs text-muted-foreground">
               {importable.length} de {candidates.length} serão importadas
               {candidates.length - importable.length > 0 &&
                 ` (${candidates.length - importable.length} ignorada(s): duplicata ou sem título)`}
@@ -329,7 +329,7 @@ export function ImportSourcesDialog({
         )}
 
         {step === "result" && result && (
-          <div className="space-y-4 px-6 py-6">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-6">
             <Alert>
               <CheckCircle2 className="size-4" />
               <AlertTitle>Importação concluída</AlertTitle>
@@ -351,7 +351,7 @@ export function ImportSourcesDialog({
           </div>
         )}
 
-        <DialogFooter className="border-t px-6 py-4">
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           {step !== "choose" && step !== "result" && (
             <Button type="button" variant="outline" onClick={() => setStep("choose")}>
               Cancelar

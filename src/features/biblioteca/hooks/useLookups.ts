@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
 import type { Tables } from "@/integrations/supabase/types";
+import { upsertKeyword, upsertPerson } from "../lib/upsertLookup";
 
 export type PersonOption = Tables<"people">;
 export type KeywordOption = Tables<"keywords">;
@@ -26,15 +27,7 @@ export function usePeople(ownerId: string | undefined) {
 export function useCreatePerson(ownerId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (fullName: string) => {
-      const { data, error } = await supabase
-        .from("people")
-        .insert({ full_name: fullName, owner_id: ownerId as string })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: async (fullName: string) => upsertPerson(ownerId as string, fullName),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["people", ownerId] }),
   });
 }
@@ -58,15 +51,7 @@ export function useKeywords(ownerId: string | undefined) {
 export function useCreateKeyword(ownerId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (label: string) => {
-      const { data, error } = await supabase
-        .from("keywords")
-        .insert({ label, owner_id: ownerId as string })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: async (label: string) => upsertKeyword(ownerId as string, label),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["keywords", ownerId] }),
   });
 }

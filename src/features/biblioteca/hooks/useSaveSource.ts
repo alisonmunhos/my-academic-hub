@@ -111,10 +111,18 @@ export function useSaveSource(ownerId: string | undefined) {
       const { error: upsertError } = await supabase.from("sources").upsert(payload);
       if (upsertError) throw upsertError;
 
+      // Dedupe defensivo: a UI já evita selecionar a mesma pessoa/palavra-chave/tag duas vezes,
+      // mas nunca confiamos apenas nisso — um id duplicado aqui violaria a chave primária.
+      const dedupedPeople = input.people.filter(
+        (p, index) => input.people.findIndex((other) => other.person_id === p.person_id) === index,
+      );
+      const dedupedKeywordIds = Array.from(new Set(input.keywordIds));
+      const dedupedTagIds = Array.from(new Set(input.tagIds));
+
       await supabase.from("source_people").delete().eq("source_id", sourceId);
-      if (input.people.length > 0) {
+      if (dedupedPeople.length > 0) {
         const { error } = await supabase.from("source_people").insert(
-          input.people.map((p) => ({
+          dedupedPeople.map((p) => ({
             source_id: sourceId,
             person_id: p.person_id,
             role: p.role,
@@ -125,18 +133,18 @@ export function useSaveSource(ownerId: string | undefined) {
       }
 
       await supabase.from("source_keywords").delete().eq("source_id", sourceId);
-      if (input.keywordIds.length > 0) {
+      if (dedupedKeywordIds.length > 0) {
         const { error } = await supabase
           .from("source_keywords")
-          .insert(input.keywordIds.map((keyword_id) => ({ source_id: sourceId, keyword_id })));
+          .insert(dedupedKeywordIds.map((keyword_id) => ({ source_id: sourceId, keyword_id })));
         if (error) throw error;
       }
 
       await supabase.from("source_tags").delete().eq("source_id", sourceId);
-      if (input.tagIds.length > 0) {
+      if (dedupedTagIds.length > 0) {
         const { error } = await supabase
           .from("source_tags")
-          .insert(input.tagIds.map((tag_id) => ({ source_id: sourceId, tag_id })));
+          .insert(dedupedTagIds.map((tag_id) => ({ source_id: sourceId, tag_id })));
         if (error) throw error;
       }
 
