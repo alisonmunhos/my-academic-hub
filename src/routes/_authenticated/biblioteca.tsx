@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { BookMarked, Loader2, LogOut, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { ColumnVisibilityMenu } from "@/features/biblioteca/components/ColumnVisibilityMenu";
+import { FilterPanel } from "@/features/biblioteca/components/FilterPanel";
 import { SourceFormDialog } from "@/features/biblioteca/components/SourceFormDialog";
 import { SourcesTable } from "@/features/biblioteca/components/SourcesTable";
 import {
@@ -18,6 +19,7 @@ import {
   useVisibleColumns,
 } from "@/features/biblioteca/hooks/useUserPreferences";
 import type { SourceRow } from "@/features/biblioteca/hooks/useSources";
+import { createEmptyFilterState, filterSources } from "@/features/biblioteca/lib/filtering";
 
 export const Route = createFileRoute("/_authenticated/biblioteca")({
   head: () => ({
@@ -50,8 +52,10 @@ function BibliotecaPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [filters, setFilters] = useState(createEmptyFilterState);
 
   const editingSource: SourceRow | null = sources.find((s) => s.id === editingSourceId) ?? null;
+  const filteredSources = useMemo(() => filterSources(sources, filters), [sources, filters]);
 
   async function sair() {
     await supabase?.auth.signOut();
@@ -115,9 +119,16 @@ function BibliotecaPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold">Minhas referências</h2>
+          <h2 className="text-lg font-semibold">
+            Minhas referências
+            {!isLoading && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                {filteredSources.length} de {sources.length}
+              </span>
+            )}
+          </h2>
           <div className="flex items-center gap-2">
             <ColumnVisibilityMenu
               visibleColumns={visibleColumns}
@@ -135,16 +146,28 @@ function BibliotecaPage() {
             <Loader2 className="size-5 animate-spin" />
           </div>
         ) : (
-          <SourcesTable
-            sources={sources}
-            visibleColumns={visibleColumns}
-            onToggleFavorite={(source) =>
-              toggleFavorite.mutate({ id: source.id, isFavorite: !source.is_favorite })
-            }
-            onEdit={openEditSource}
-            onOpenLink={handleOpenLink}
-            onOpenPdf={handleOpenPdf}
-          />
+          <div className="flex items-start gap-4">
+            {ownerId && (
+              <FilterPanel
+                ownerId={ownerId}
+                sources={sources}
+                filters={filters}
+                onChange={setFilters}
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <SourcesTable
+                sources={filteredSources}
+                visibleColumns={visibleColumns}
+                onToggleFavorite={(source) =>
+                  toggleFavorite.mutate({ id: source.id, isFavorite: !source.is_favorite })
+                }
+                onEdit={openEditSource}
+                onOpenLink={handleOpenLink}
+                onOpenPdf={handleOpenPdf}
+              />
+            </div>
+          </div>
         )}
       </main>
 
