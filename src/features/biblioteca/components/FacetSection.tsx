@@ -91,7 +91,7 @@ export function FacetSection({
         />
       )}
 
-      <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+      <div className="max-h-44 space-y-1 overflow-y-auto overscroll-contain pr-1">
         {visible.length === 0 && (
           <p className="text-xs text-muted-foreground">Nenhuma opção disponível.</p>
         )}

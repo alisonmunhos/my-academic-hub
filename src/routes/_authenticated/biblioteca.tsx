@@ -201,13 +201,34 @@ function BibliotecaPage() {
             ) : (
               <div className="flex items-start gap-4">
                 {ownerId && (
-                  <FilterPanel
-                    ownerId={ownerId}
-                    sources={sources}
-                    filters={filters}
-                    onChange={setFilters}
-                  />
+                  <>
+                    <div className="hidden lg:block">
+                      <FilterPanel
+                        ownerId={ownerId}
+                        sources={sources}
+                        filters={filters}
+                        onChange={setFilters}
+                      />
+                    </div>
+                    <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                      <SheetContent
+                        side="left"
+                        className="flex w-[90vw] max-w-sm flex-col gap-4 overflow-y-auto overscroll-contain"
+                      >
+                        <SheetHeader>
+                          <SheetTitle>Filtros</SheetTitle>
+                        </SheetHeader>
+                        <FilterPanel
+                          ownerId={ownerId}
+                          sources={sources}
+                          filters={filters}
+                          onChange={setFilters}
+                        />
+                      </SheetContent>
+                    </Sheet>
+                  </>
                 )}
+
                 <div className="min-w-0 flex-1 space-y-3">
                   {selectedIds.size > 0 && ownerId && (
                     <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
