@@ -1,9 +1,18 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { BookMarked, ListOrdered, Loader2, LogOut, Plus, Upload } from "lucide-react";
+import {
+  BookMarked,
+  ListOrdered,
+  Loader2,
+  LogOut,
+  Plus,
+  SlidersHorizontal,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
 import { AddSelectionToProjectPopover } from "@/features/biblioteca/components/AddSelectionToProjectPopover";
@@ -26,7 +35,11 @@ import {
   useVisibleColumns,
 } from "@/features/biblioteca/hooks/useUserPreferences";
 import type { SourceRow } from "@/features/biblioteca/hooks/useSources";
-import { createEmptyFilterState, filterSources } from "@/features/biblioteca/lib/filtering";
+import {
+  createEmptyFilterState,
+  filterSources,
+  isFilterStateEmpty,
+} from "@/features/biblioteca/lib/filtering";
 import { computeDuplicateReview } from "@/features/biblioteca/lib/duplicates";
 
 export const Route = createFileRoute("/_authenticated/biblioteca")({
@@ -65,6 +78,7 @@ function BibliotecaPage() {
   const [citingSourceId, setCitingSourceId] = useState<string | null>(null);
   const [batchCiteOpen, setBatchCiteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [filtersSheetOpen, setFiltersSheetOpen] = useState(false);
 
   const editingSource: SourceRow | null = sources.find((s) => s.id === editingSourceId) ?? null;
   const citingSource: SourceRow | null = sources.find((s) => s.id === citingSourceId) ?? null;
@@ -179,6 +193,32 @@ function BibliotecaPage() {
                 )}
               </h2>
               <div className="flex items-center gap-2">
+                {ownerId && (
+                  <Sheet open={filtersSheetOpen} onOpenChange={setFiltersSheetOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="outline" size="sm" className="lg:hidden">
+                        <SlidersHorizontal className="size-4" />
+                        Filtros
+                        {!isFilterStateEmpty(filters) && (
+                          <span className="ml-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                            •
+                          </span>
+                        )}
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-80 overflow-y-auto p-0 sm:max-w-xs">
+                      <SheetTitle className="sr-only">Filtros</SheetTitle>
+                      <div className="p-4">
+                        <FilterPanel
+                          ownerId={ownerId}
+                          sources={sources}
+                          filters={filters}
+                          onChange={setFilters}
+                        />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                )}
                 <ColumnVisibilityMenu
                   visibleColumns={visibleColumns}
                   onChange={(columns) => setVisibleColumns.mutate(columns)}
@@ -201,12 +241,14 @@ function BibliotecaPage() {
             ) : (
               <div className="flex items-start gap-4">
                 {ownerId && (
-                  <FilterPanel
-                    ownerId={ownerId}
-                    sources={sources}
-                    filters={filters}
-                    onChange={setFilters}
-                  />
+                  <div className="hidden shrink-0 lg:block">
+                    <FilterPanel
+                      ownerId={ownerId}
+                      sources={sources}
+                      filters={filters}
+                      onChange={setFilters}
+                    />
+                  </div>
                 )}
                 <div className="min-w-0 flex-1 space-y-3">
                   {selectedIds.size > 0 && ownerId && (

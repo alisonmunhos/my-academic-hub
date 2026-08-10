@@ -129,7 +129,7 @@ export function SourcesTable({
 
   return (
     <div className="rounded-lg border">
-      <Table>
+      <Table className="min-w-max">
         <TableHeader>
           <TableRow>
             {selectable && (

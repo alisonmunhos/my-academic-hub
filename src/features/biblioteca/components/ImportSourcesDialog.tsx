@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConfirmImport, type ImportResult } from "../hooks/useConfirmImport";
 import { metadataToCandidate, useExtractMetadata } from "../hooks/useExtractMetadata";
 import { useExtractPdf } from "../hooks/useExtractPdf";
@@ -297,7 +296,7 @@ export function ImportSourcesDialog({
 
         {step === "review" && (
           <>
-            <ScrollArea className="min-h-0 flex-1">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="space-y-3 px-6 py-4">
                 <button
                   type="button"
@@ -318,7 +317,7 @@ export function ImportSourcesDialog({
                   }}
                 />
               </div>
-            </ScrollArea>
+            </div>
             <div className="shrink-0 border-t px-6 py-3 text-xs text-muted-foreground">
               {importable.length} de {candidates.length} serão importadas
               {candidates.length - importable.length > 0 &&

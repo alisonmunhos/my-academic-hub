@@ -4,7 +4,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCitations, sortSourcesAlphabetically } from "../lib/citations";
 import type { SourceRow } from "../hooks/useSources";
 
@@ -33,7 +32,7 @@ export function BatchCiteDialog({ sources, onOpenChange }: BatchCiteDialogProps)
           <DialogTitle>Referências ({references.length})</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[50vh] rounded-md border">
+        <div className="max-h-[50vh] overflow-y-auto rounded-md border">
           <div className="space-y-3 p-4">
             {references.map((ref, index) => (
               <p key={sorted[index]?.id ?? index} className="text-sm">
@@ -41,7 +40,7 @@ export function BatchCiteDialog({ sources, onOpenChange }: BatchCiteDialogProps)
               </p>
             ))}
           </div>
-        </ScrollArea>
+        </div>
 
         <Button type="button" onClick={copyAll} className="w-full">
           <Copy className="size-4" />
