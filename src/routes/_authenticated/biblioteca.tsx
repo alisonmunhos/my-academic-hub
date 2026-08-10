@@ -10,6 +10,7 @@ import { AddSelectionToProjectPopover } from "@/features/biblioteca/components/A
 import { BatchCiteDialog } from "@/features/biblioteca/components/BatchCiteDialog";
 import { CiteDialog } from "@/features/biblioteca/components/CiteDialog";
 import { ColumnVisibilityMenu } from "@/features/biblioteca/components/ColumnVisibilityMenu";
+import { DuplicatesPanel } from "@/features/biblioteca/components/DuplicatesPanel";
 import { FilterPanel } from "@/features/biblioteca/components/FilterPanel";
 import { ProjectsPanel } from "@/features/biblioteca/components/ProjectsPanel";
 import { SourceFormDialog } from "@/features/biblioteca/components/SourceFormDialog";
@@ -25,6 +26,7 @@ import {
 } from "@/features/biblioteca/hooks/useUserPreferences";
 import type { SourceRow } from "@/features/biblioteca/hooks/useSources";
 import { createEmptyFilterState, filterSources } from "@/features/biblioteca/lib/filtering";
+import { computeDuplicateReview } from "@/features/biblioteca/lib/duplicates";
 
 export const Route = createFileRoute("/_authenticated/biblioteca")({
   head: () => ({
@@ -69,6 +71,8 @@ function BibliotecaPage() {
     () => filteredSources.filter((s) => selectedIds.has(s.id)),
     [filteredSources, selectedIds],
   );
+  const duplicateReview = useMemo(() => computeDuplicateReview(sources), [sources]);
+  const duplicateCount = duplicateReview.groups.length + duplicateReview.standalone.length;
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -152,6 +156,14 @@ function BibliotecaPage() {
           <TabsList className="mb-4">
             <TabsTrigger value="referencias">Referências</TabsTrigger>
             <TabsTrigger value="projetos">Projetos</TabsTrigger>
+            <TabsTrigger value="duplicatas">
+              Duplicatas
+              {duplicateCount > 0 && (
+                <span className="ml-1.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
+                  {duplicateCount}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="referencias">
@@ -229,6 +241,11 @@ function BibliotecaPage() {
 
           <TabsContent value="projetos">
             {ownerId && <ProjectsPanel ownerId={ownerId} allSources={sources} />}
+          </TabsContent>
+
+          <TabsContent value="duplicatas">
+            <h2 className="mb-4 text-lg font-semibold">Revisar duplicatas</h2>
+            {ownerId && <DuplicatesPanel ownerId={ownerId} sources={sources} />}
           </TabsContent>
         </Tabs>
       </main>
