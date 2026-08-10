@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { useConfirmImport, type ImportResult } from "../hooks/useConfirmImport";
 import { metadataToCandidate, useExtractMetadata } from "../hooks/useExtractMetadata";
 import { useExtractPdf } from "../hooks/useExtractPdf";
@@ -167,7 +167,7 @@ export function ImportSourcesDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col gap-0 p-0">
+      <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] max-w-2xl flex-col gap-0 p-0 sm:max-h-[85vh]">
         <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>Importar fontes</DialogTitle>
         </DialogHeader>
@@ -297,7 +297,7 @@ export function ImportSourcesDialog({
 
         {step === "review" && (
           <>
-            <ScrollArea className="min-h-0 flex-1">
+            <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
               <div className="space-y-3 px-6 py-4">
                 <button
                   type="button"
@@ -318,7 +318,7 @@ export function ImportSourcesDialog({
                   }}
                 />
               </div>
-            </ScrollArea>
+            </div>
             <div className="shrink-0 border-t px-6 py-3 text-xs text-muted-foreground">
               {importable.length} de {candidates.length} serão importadas
               {candidates.length - importable.length > 0 &&

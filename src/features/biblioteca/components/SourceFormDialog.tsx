@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import {
   Select,
   SelectContent,
@@ -220,13 +220,14 @@ export function SourceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col gap-0 p-0">
+      <DialogContent className="flex max-h-[calc(100dvh-1.5rem)] max-w-2xl flex-col gap-0 p-0 sm:max-h-[85vh]">
         <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>{source ? "Editar fonte" : "Nova fonte"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-          <ScrollArea className="min-h-0 flex-1">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+
             <div className="space-y-6 px-6 py-4">
               {duplicate && (
                 <Alert variant="destructive">
@@ -542,7 +543,7 @@ export function SourceFormDialog({
                 )}
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter className="shrink-0 border-t px-6 py-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
