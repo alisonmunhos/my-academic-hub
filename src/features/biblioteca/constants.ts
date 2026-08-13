@@ -24,6 +24,7 @@ export const PERSON_ROLES = [
   "organizador",
   "tradutor",
   "ilustrador",
+  "editor",
 ] as const;
 export type PersonRole = (typeof PERSON_ROLES)[number];
 
@@ -34,6 +35,7 @@ export const PERSON_ROLE_LABELS: Record<PersonRole, string> = {
   organizador: "Organizador",
   tradutor: "Tradutor",
   ilustrador: "Ilustrador",
+  editor: "Editor",
 };
 
 export const DUPLICATE_STATUS = ["Não", "Revisar", "Variante confirmada"] as const;

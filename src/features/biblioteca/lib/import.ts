@@ -4,6 +4,19 @@ import type { SourceRow } from "../hooks/useSources";
 
 export type ImportOrigin = "link" | "ris" | "pdf";
 
+/** Um título ou resumo alternativo, com idioma inferido quando possível. */
+export interface LocalizedText {
+  text: string;
+  language: Language | null;
+}
+
+export type SourceLinkType = "pagina" | "pdf_direto" | "outro";
+
+export interface CandidateLink {
+  url: string;
+  linkType: SourceLinkType;
+}
+
 export interface ImportCandidate {
   localId: string;
   origin: ImportOrigin;
@@ -16,6 +29,8 @@ export interface ImportCandidate {
   volume: string;
   issue: string;
   pages: string;
+  publisher: string;
+  place: string;
   doi: string;
   url: string;
   abstract: string;
@@ -24,6 +39,24 @@ export interface ImportCandidate {
   language: Language | null;
   setAccessDateToday: boolean;
   pdfFile?: File | null;
+  /** ISSN/ISBN (tag RIS "SN"). */
+  issnIsbn: string;
+  /** Base de dados de origem (tag RIS "DB"). */
+  databaseSource: string;
+  /** Identificador externo (tag RIS "ID"). */
+  externalId: string;
+  /** Títulos traduzidos/alternativos (tag RIS "TT", pode repetir). */
+  altTitles: LocalizedText[];
+  /** Todos os resumos encontrados (tag RIS "AB", pode repetir). */
+  abstracts: LocalizedText[];
+  /** Editores (tags RIS "A2"/"A3"), separados por ";". */
+  editorNames: string;
+  /** Tradutores (tag RIS "A4"), separados por ";". */
+  translatorNames: string;
+  /** Links (tags RIS "UR" + "L1"-"L4"), com tipo já inferido. */
+  links: CandidateLink[];
+  /** Registro bruto completo (todas as tags -> valores, ou o payload cru de link/PDF), sempre gravado. */
+  rawImportData: Record<string, unknown> | null;
 }
 
 export function createEmptyCandidate(origin: ImportOrigin): ImportCandidate {
@@ -38,6 +71,8 @@ export function createEmptyCandidate(origin: ImportOrigin): ImportCandidate {
     volume: "",
     issue: "",
     pages: "",
+    publisher: "",
+    place: "",
     doi: "",
     url: "",
     abstract: "",
@@ -45,6 +80,15 @@ export function createEmptyCandidate(origin: ImportOrigin): ImportCandidate {
     language: null,
     setAccessDateToday: origin !== "ris",
     pdfFile: null,
+    issnIsbn: "",
+    databaseSource: "",
+    externalId: "",
+    altTitles: [],
+    abstracts: [],
+    editorNames: "",
+    translatorNames: "",
+    links: [],
+    rawImportData: null,
   };
 }
 
