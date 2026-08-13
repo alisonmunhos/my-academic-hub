@@ -40,8 +40,13 @@ export function metadataToCandidate(data: ExtractMetadataResponse): ImportCandid
     doi: data.doi,
     url: data.url,
     abstract: data.abstract,
+    abstracts: data.abstract ? [{ text: data.abstract, language: mapLanguage(data.language) }] : [],
     keywords: data.keywords.join("; "),
     language: mapLanguage(data.language),
+    links: data.url ? [{ url: data.url, linkType: "pagina" }] : [],
+    // Zero perda: guarda a resposta inteira da extração, independente do que
+    // também foi mapeado para campos estruturados.
+    rawImportData: data as unknown as Record<string, unknown>,
   };
 }
 

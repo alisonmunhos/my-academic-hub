@@ -24,6 +24,9 @@ export type SourceRow = Tables<"sources"> & {
   source_keywords: SourceKeywordRow[];
   source_tags: SourceTagRow[];
   project_sources: SourceProjectRow[];
+  source_titles: Tables<"source_titles">[];
+  source_abstracts: Tables<"source_abstracts">[];
+  source_links: Tables<"source_links">[];
 };
 
 export const sourcesQueryKey = (ownerId: string | undefined) => ["sources", ownerId] as const;
@@ -31,7 +34,10 @@ export const sourcesQueryKey = (ownerId: string | undefined) => ["sources", owne
 const SOURCE_SELECT =
   "*, source_people(source_id, person_id, role, position, people(id, full_name)), " +
   "source_keywords(keywords(id, label)), source_tags(tags(id, label, color)), " +
-  "project_sources(project_id)";
+  "project_sources(project_id), " +
+  "source_titles(id, title_text, language, title_type), " +
+  "source_abstracts(id, abstract_text, language), " +
+  "source_links(id, url, link_type, label)";
 
 export function useSources(ownerId: string | undefined) {
   return useQuery({
