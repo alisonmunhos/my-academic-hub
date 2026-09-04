@@ -151,6 +151,41 @@ export type Database = {
           },
         ]
       }
+      source_import_events: {
+        Row: {
+          id: string
+          import_channel: string
+          occurred_at: string
+          origin_reference: string | null
+          search_execution_id: string | null
+          source_id: string
+        }
+        Insert: {
+          id?: string
+          import_channel: string
+          occurred_at?: string
+          origin_reference?: string | null
+          search_execution_id?: string | null
+          source_id: string
+        }
+        Update: {
+          id?: string
+          import_channel?: string
+          occurred_at?: string
+          origin_reference?: string | null
+          search_execution_id?: string | null
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_import_events_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       source_keywords: {
         Row: {
           keyword_id: string

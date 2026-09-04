@@ -57,6 +57,8 @@ export interface ImportCandidate {
   links: CandidateLink[];
   /** Registro bruto completo (todas as tags -> valores, ou o payload cru de link/PDF), sempre gravado. */
   rawImportData: Record<string, unknown> | null;
+  /** Referência de origem do import_channel (nome do arquivo .ris/.pdf, ou a URL). */
+  originReference: string;
 }
 
 export function createEmptyCandidate(origin: ImportOrigin): ImportCandidate {
@@ -89,6 +91,7 @@ export function createEmptyCandidate(origin: ImportOrigin): ImportCandidate {
     translatorNames: "",
     links: [],
     rawImportData: null,
+    originReference: "",
   };
 }
 

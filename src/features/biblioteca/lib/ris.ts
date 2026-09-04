@@ -281,11 +281,15 @@ export function risEntryToCandidate(map: RisTagMap): ImportCandidate {
   };
 }
 
-export function parseRisText(raw: string): ImportCandidate[] {
-  return parseRisEntries(raw).map(risEntryToCandidate);
+export function parseRisText(raw: string, originReference = ""): ImportCandidate[] {
+  return parseRisEntries(raw)
+    .map(risEntryToCandidate)
+    .map((candidate) => ({ ...candidate, originReference }));
 }
 
 export async function parseRisFiles(files: File[]): Promise<ImportCandidate[]> {
-  const texts = await Promise.all(files.map((file) => file.text()));
-  return texts.flatMap((text) => parseRisText(text));
+  const entries = await Promise.all(
+    files.map(async (file) => ({ name: file.name, text: await file.text() })),
+  );
+  return entries.flatMap(({ name, text }) => parseRisText(text, name));
 }

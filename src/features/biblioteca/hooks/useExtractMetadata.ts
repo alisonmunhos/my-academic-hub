@@ -47,6 +47,7 @@ export function metadataToCandidate(data: ExtractMetadataResponse): ImportCandid
     // Zero perda: guarda a resposta inteira da extração, independente do que
     // também foi mapeado para campos estruturados.
     rawImportData: data as unknown as Record<string, unknown>,
+    originReference: data.url,
   };
 }
 

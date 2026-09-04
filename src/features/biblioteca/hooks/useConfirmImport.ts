@@ -235,6 +235,17 @@ export function useConfirmImport(ownerId: string | undefined) {
             if (error) throw error;
           }
 
+          // Histórico de importação (TDD §2.3): toda fonte criada, por qualquer
+          // canal, gera um evento — independente de haver busca sistemática.
+          {
+            const { error } = await supabase.from("source_import_events").insert({
+              source_id: sourceId,
+              import_channel: candidate.origin,
+              origin_reference: candidate.originReference || null,
+            });
+            if (error) throw error;
+          }
+
           result.inserted += 1;
           existingMap.set(chaveDoc, { id: sourceId, title: candidate.title.trim() });
         } catch (error) {
