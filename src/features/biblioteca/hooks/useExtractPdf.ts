@@ -15,6 +15,10 @@ export function pdfExtractionToCandidate(
     year: data.year,
     doi: data.doi,
     pdfFile: file,
+    // Zero perda: guarda tudo que a extração do PDF conseguiu ler, mesmo o
+    // que não virou campo estruturado (fonte do título/autor, etc.).
+    rawImportData: data as unknown as Record<string, unknown>,
+    originReference: file.name,
   };
 }
 

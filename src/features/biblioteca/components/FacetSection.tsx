@@ -6,7 +6,13 @@ import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { FacetMode } from "../lib/filtering";
 
-export interface FacetOption {
+const MODE_LABELS: Record<FacetMode, string> = {
+  any: "Qualquer uma",
+  all: "Todas",
+  none: "Nenhuma",
+};
+
+export interface FacetOptionWithCount {
   value: string;
   label: string;
   count: number;
@@ -14,9 +20,11 @@ export interface FacetOption {
 
 interface FacetSectionProps {
   title: string;
-  options: FacetOption[];
+  options: FacetOptionWithCount[];
   selected: string[];
   mode: FacetMode;
+  /** Modos de combinação oferecidos para esta faceta (só faz sentido "todas" quando uma fonte pode ter vários valores). */
+  modes: FacetMode[];
   onChange: (next: { selected: string[]; mode: FacetMode }) => void;
   searchable?: boolean;
   sortByCount?: boolean;
@@ -27,6 +35,7 @@ export function FacetSection({
   options,
   selected,
   mode,
+  modes,
   onChange,
   searchable = false,
   sortByCount = false,
@@ -62,7 +71,7 @@ export function FacetSection({
         )}
       </div>
 
-      {selected.length > 0 && (
+      {selected.length > 0 && modes.length > 1 && (
         <ToggleGroup
           type="single"
           size="sm"
@@ -70,15 +79,11 @@ export function FacetSection({
           onValueChange={(value) => value && onChange({ selected, mode: value as FacetMode })}
           className="justify-start"
         >
-          <ToggleGroupItem value="any" className="h-6 px-2 text-[11px]">
-            Qualquer uma
-          </ToggleGroupItem>
-          <ToggleGroupItem value="all" className="h-6 px-2 text-[11px]">
-            Todas
-          </ToggleGroupItem>
-          <ToggleGroupItem value="none" className="h-6 px-2 text-[11px]">
-            Nenhuma
-          </ToggleGroupItem>
+          {modes.map((m) => (
+            <ToggleGroupItem key={m} value={m} className="h-6 px-2 text-[11px]">
+              {MODE_LABELS[m]}
+            </ToggleGroupItem>
+          ))}
         </ToggleGroup>
       )}
 

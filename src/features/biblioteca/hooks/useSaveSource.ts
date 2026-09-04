@@ -111,6 +111,16 @@ export function useSaveSource(ownerId: string | undefined) {
       const { error: upsertError } = await supabase.from("sources").upsert(payload);
       if (upsertError) throw upsertError;
 
+      // Histórico de importação (TDD §2.3): cadastro manual também conta como
+      // canal de entrada — só na criação, não a cada edição de uma já existente.
+      if (!input.id) {
+        const { error } = await supabase.from("source_import_events").insert({
+          source_id: sourceId,
+          import_channel: "manual",
+        });
+        if (error) throw error;
+      }
+
       // Dedupe defensivo: a UI já evita selecionar a mesma pessoa/palavra-chave/tag duas vezes,
       // mas nunca confiamos apenas nisso — um id duplicado aqui violaria a chave primária.
       const dedupedPeople = input.people.filter(

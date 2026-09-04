@@ -119,6 +119,73 @@ export type Database = {
         }
         Relationships: []
       }
+      source_abstracts: {
+        Row: {
+          abstract_text: string
+          created_at: string
+          id: string
+          language: string | null
+          source_id: string
+        }
+        Insert: {
+          abstract_text: string
+          created_at?: string
+          id?: string
+          language?: string | null
+          source_id: string
+        }
+        Update: {
+          abstract_text?: string
+          created_at?: string
+          id?: string
+          language?: string | null
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_abstracts_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_import_events: {
+        Row: {
+          id: string
+          import_channel: string
+          occurred_at: string
+          origin_reference: string | null
+          search_execution_id: string | null
+          source_id: string
+        }
+        Insert: {
+          id?: string
+          import_channel: string
+          occurred_at?: string
+          origin_reference?: string | null
+          search_execution_id?: string | null
+          source_id: string
+        }
+        Update: {
+          id?: string
+          import_channel?: string
+          occurred_at?: string
+          origin_reference?: string | null
+          search_execution_id?: string | null
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_import_events_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       source_keywords: {
         Row: {
           keyword_id: string
@@ -142,6 +209,41 @@ export type Database = {
           },
           {
             foreignKeyName: "source_keywords_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_links: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          link_type: string
+          source_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          link_type?: string
+          source_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          link_type?: string
+          source_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_links_source_id_fkey"
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "sources"
@@ -215,6 +317,41 @@ export type Database = {
           },
         ]
       }
+      source_titles: {
+        Row: {
+          created_at: string
+          id: string
+          language: string | null
+          source_id: string
+          title_text: string
+          title_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          language?: string | null
+          source_id: string
+          title_text: string
+          title_type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          language?: string | null
+          source_id?: string
+          title_text?: string
+          title_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_titles_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sources: {
         Row: {
           abstract: string | null
@@ -226,13 +363,16 @@ export type Database = {
           color_tag: string | null
           container_title: string | null
           created_at: string
+          database_source: string | null
           doi: string | null
           duplicate_group_id: string | null
           duplicate_status: string | null
+          external_id: string | null
           has_pdf: boolean
           id: string
           is_favorite: boolean
           is_public: boolean
+          issn_isbn: string | null
           issue: string | null
           language: string | null
           months: string | null
@@ -243,6 +383,7 @@ export type Database = {
           place: string | null
           public_slug: string | null
           publisher: string | null
+          raw_import_data: Json | null
           source_type: string
           status_reading: string
           title: string
@@ -261,13 +402,16 @@ export type Database = {
           color_tag?: string | null
           container_title?: string | null
           created_at?: string
+          database_source?: string | null
           doi?: string | null
           duplicate_group_id?: string | null
           duplicate_status?: string | null
+          external_id?: string | null
           has_pdf?: boolean
           id?: string
           is_favorite?: boolean
           is_public?: boolean
+          issn_isbn?: string | null
           issue?: string | null
           language?: string | null
           months?: string | null
@@ -278,6 +422,7 @@ export type Database = {
           place?: string | null
           public_slug?: string | null
           publisher?: string | null
+          raw_import_data?: Json | null
           source_type?: string
           status_reading?: string
           title: string
@@ -296,13 +441,16 @@ export type Database = {
           color_tag?: string | null
           container_title?: string | null
           created_at?: string
+          database_source?: string | null
           doi?: string | null
           duplicate_group_id?: string | null
           duplicate_status?: string | null
+          external_id?: string | null
           has_pdf?: boolean
           id?: string
           is_favorite?: boolean
           is_public?: boolean
+          issn_isbn?: string | null
           issue?: string | null
           language?: string | null
           months?: string | null
@@ -313,6 +461,7 @@ export type Database = {
           place?: string | null
           public_slug?: string | null
           publisher?: string | null
+          raw_import_data?: Json | null
           source_type?: string
           status_reading?: string
           title?: string
