@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { useConfirmImport, type ImportResult } from "../hooks/useConfirmImport";
+import { enrichCandidateWithDoi, enrichCandidatesWithDoi } from "../hooks/useDoiEnrich";
 import { metadataToCandidate, useExtractMetadata } from "../hooks/useExtractMetadata";
 import { useExtractPdf } from "../hooks/useExtractPdf";
 import {
@@ -23,6 +24,13 @@ import {
   getCandidateStatus,
   type ImportCandidate,
 } from "../lib/import";
+import {
+  computeMergePlan,
+  isMergeFullyResolved,
+  type MergeDecisions,
+  type MergeFieldKey,
+  type MergePlan,
+} from "../lib/merge";
 import { parseRisFiles } from "../lib/ris";
 import type { SourceRow } from "../hooks/useSources";
 import { ImportReviewTable, type DuplicateInfo } from "./ImportReviewTable";
@@ -49,6 +57,7 @@ export function ImportSourcesDialog({
   const [linkUrl, setLinkUrl] = useState("");
   const [result, setResult] = useState<ImportResult | null>(null);
   const [risLoading, setRisLoading] = useState(false);
+  const [mergeDecisions, setMergeDecisions] = useState<Record<string, MergeDecisions>>({});
 
   const extractMetadata = useExtractMetadata();
   const extractPdf = useExtractPdf();
@@ -63,7 +72,7 @@ export function ImportSourcesDialog({
       const chaveDoc = candidateChaveDoc(candidate);
       const existing = existingMap.get(chaveDoc);
       if (existing) {
-        map.set(candidate.localId, existing);
+        map.set(candidate.localId, { id: existing.id, title: existing.title });
         continue;
       }
       const firstLocalId = seen.get(chaveDoc);
@@ -77,11 +86,36 @@ export function ImportSourcesDialog({
     return map;
   }, [candidates, existingMap]);
 
+  /** Um plano de mesclagem por enriquecimento (RF7) para cada candidato que bate com uma fonte já existente. */
+  const mergePlans = useMemo(() => {
+    const map = new Map<string, MergePlan>();
+    for (const candidate of candidates) {
+      const duplicateOf = duplicates.get(candidate.localId);
+      if (!duplicateOf || duplicateOf.local) continue;
+      const existing = existingMap.get(candidateChaveDoc(candidate));
+      if (!existing) continue;
+      map.set(candidate.localId, computeMergePlan(existing, candidate));
+    }
+    return map;
+  }, [candidates, duplicates, existingMap]);
+
+  function setMergeFieldDecision(
+    localId: string,
+    field: MergeFieldKey,
+    decision: "existing" | "new",
+  ) {
+    setMergeDecisions((prev) => ({
+      ...prev,
+      [localId]: { ...prev[localId], [field]: decision },
+    }));
+  }
+
   function reset() {
     setStep("choose");
     setCandidates([]);
     setLinkUrl("");
     setResult(null);
+    setMergeDecisions({});
   }
 
   function handleClose(nextOpen: boolean) {
@@ -93,7 +127,10 @@ export function ImportSourcesDialog({
     if (!linkUrl.trim()) return;
     try {
       const data = await extractMetadata.mutateAsync(linkUrl.trim());
-      const candidate = metadataToCandidate(data);
+      let candidate = metadataToCandidate(data);
+      // RF6: DOI identificado -> Crossref vira a base de verdade para título/
+      // autores/veículo/ano/editora/ISSN. Nunca trava a importação se falhar.
+      if (candidate.doi.trim()) candidate = await enrichCandidateWithDoi(candidate);
       setCandidates((prev) => [...prev, candidate]);
       setLinkUrl("");
       setStep("review");
@@ -116,7 +153,9 @@ export function ImportSourcesDialog({
         toast.warning("Nenhuma entrada RIS válida encontrada no(s) arquivo(s).");
         return;
       }
-      setCandidates((prev) => [...prev, ...parsed]);
+      // RF6: mesmo enriquecimento via Crossref para quem já vem com DOI do RIS.
+      const enriched = await enrichCandidatesWithDoi(parsed);
+      setCandidates((prev) => [...prev, ...enriched]);
       setStep("review");
       toast.success(`${parsed.length} entrada(s) encontrada(s) em ${files.length} arquivo(s).`);
     } catch (error) {
@@ -150,13 +189,17 @@ export function ImportSourcesDialog({
   }
 
   const importable = candidates.filter((c) => {
-    const status = getCandidateStatus(c, duplicates.get(c.localId) ?? null);
-    return status !== "duplicate" && status !== "missing_title";
+    const plan = mergePlans.get(c.localId);
+    const conflictsPending = plan
+      ? !isMergeFullyResolved(plan, mergeDecisions[c.localId] ?? {})
+      : false;
+    const status = getCandidateStatus(c, duplicates.get(c.localId) ?? null, conflictsPending);
+    return status !== "duplicate" && status !== "missing_title" && status !== "merge_conflict";
   });
 
   async function handleConfirm() {
     try {
-      const outcome = await confirmImport.mutateAsync(importable);
+      const outcome = await confirmImport.mutateAsync({ candidates: importable, mergeDecisions });
       setResult(outcome);
       setStep("result");
     } catch (error) {
@@ -310,6 +353,9 @@ export function ImportSourcesDialog({
                 <ImportReviewTable
                   candidates={candidates}
                   duplicates={duplicates}
+                  mergePlans={mergePlans}
+                  mergeDecisions={mergeDecisions}
+                  onMergeFieldDecision={setMergeFieldDecision}
                   onChange={updateCandidate}
                   onRemove={removeCandidate}
                   onOpenExisting={(id) => {
@@ -320,9 +366,9 @@ export function ImportSourcesDialog({
               </div>
             </div>
             <div className="shrink-0 border-t px-6 py-3 text-xs text-muted-foreground">
-              {importable.length} de {candidates.length} serão importadas
+              {importable.length} de {candidates.length} serão processadas
               {candidates.length - importable.length > 0 &&
-                ` (${candidates.length - importable.length} ignorada(s): duplicata ou sem título)`}
+                ` (${candidates.length - importable.length} ignorada(s): duplicata, sem título, ou mesclagem com conflito pendente)`}
               .
             </div>
           </>
@@ -334,8 +380,8 @@ export function ImportSourcesDialog({
               <CheckCircle2 className="size-4" />
               <AlertTitle>Importação concluída</AlertTitle>
               <AlertDescription>
-                {result.inserted} fonte(s) importada(s), {result.duplicates} duplicata(s)
-                ignorada(s)
+                {result.inserted} fonte(s) importada(s), {result.merged} mesclada(s) em fonte(s) já
+                existente(s), {result.duplicates} duplicata(s) ignorada(s)
                 {result.errors.length > 0 && `, ${result.errors.length} com erro`}.
               </AlertDescription>
             </Alert>

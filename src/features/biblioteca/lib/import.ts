@@ -59,6 +59,8 @@ export interface ImportCandidate {
   rawImportData: Record<string, unknown> | null;
   /** Referência de origem do import_channel (nome do arquivo .ris/.pdf, ou a URL). */
   originReference: string;
+  /** true quando título/autores/veículo/ano/editora/ISSN vieram (sobrescritos) da Crossref via DOI. */
+  enrichedViaCrossref: boolean;
 }
 
 export function createEmptyCandidate(origin: ImportOrigin): ImportCandidate {
@@ -92,6 +94,7 @@ export function createEmptyCandidate(origin: ImportOrigin): ImportCandidate {
     links: [],
     rawImportData: null,
     originReference: "",
+    enrichedViaCrossref: false,
   };
 }
 
@@ -117,28 +120,36 @@ export function isTitleMissing(candidate: ImportCandidate): boolean {
   return !candidate.title.trim();
 }
 
-export type CandidateStatus = "duplicate" | "missing_title" | "missing_fields" | "complete";
+export type CandidateStatus =
+  "duplicate" | "missing_title" | "missing_fields" | "complete" | "merge_ready" | "merge_conflict";
 
+/**
+ * `duplicateOf.local` = mesma chave_doc de outra linha deste mesmo lote (arbitrário, ignorada).
+ * `duplicateOf` sem `local` = já existe uma fonte salva com essa chave_doc: em vez de bloquear,
+ * vira mesclagem por enriquecimento (RF7) — "merge_conflict" enquanto houver campo em conflito
+ * sem decisão do usuário, "merge_ready" quando já pode ser aplicada.
+ */
 export function getCandidateStatus(
   candidate: ImportCandidate,
-  duplicateOf: { id: string; title: string } | null,
+  duplicateOf: { id: string; title: string; local?: boolean } | null,
+  mergeConflictsPending?: boolean,
 ): CandidateStatus {
-  if (duplicateOf) return "duplicate";
+  if (duplicateOf?.local) return "duplicate";
   if (isTitleMissing(candidate)) return "missing_title";
+  if (duplicateOf) return mergeConflictsPending ? "merge_conflict" : "merge_ready";
   if (getMissingFields(candidate).length > 0) return "missing_fields";
   return "complete";
 }
 
 /**
- * Mapa chave_doc -> fonte existente, para checagem de duplicata client-side
- * durante a revisão em lote (evita uma consulta por linha).
+ * Mapa chave_doc -> fonte existente (registro completo, com relações), para
+ * checagem de duplicata/mesclagem client-side durante a revisão em lote
+ * (evita uma consulta por linha).
  */
-export function buildExistingChaveDocMap(
-  sources: SourceRow[],
-): Map<string, { id: string; title: string }> {
-  const map = new Map<string, { id: string; title: string }>();
+export function buildExistingChaveDocMap(sources: SourceRow[]): Map<string, SourceRow> {
+  const map = new Map<string, SourceRow>();
   for (const source of sources) {
-    if (source.chave_doc) map.set(source.chave_doc, { id: source.id, title: source.title });
+    if (source.chave_doc) map.set(source.chave_doc, source);
   }
   return map;
 }

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
-import type { Json, TablesInsert } from "@/integrations/supabase/types";
+import type { Json, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import {
   candidateChaveDoc,
   isTitleMissing,
@@ -9,8 +9,15 @@ import {
   parseSemicolonList,
   type ImportCandidate,
 } from "../lib/import";
+import {
+  computeMergePlan,
+  mergeFieldColumn,
+  resolveMergePlan,
+  type MergeDecisions,
+  type MergeFieldKey,
+} from "../lib/merge";
 import { dedupeByNormalized, upsertKeyword, upsertPerson } from "../lib/upsertLookup";
-import { sourcesQueryKey } from "./useSources";
+import { SOURCE_SELECT, sourcesQueryKey, type SourceRow } from "./useSources";
 
 /** Insere pessoas de um papel (editor/tradutor) sequencialmente (upsert seguro contra corrida). */
 async function insertPeopleForRole(
@@ -37,8 +44,16 @@ function sanitizeFileName(name: string) {
 
 export interface ImportResult {
   inserted: number;
+  /** Mesclada por enriquecimento em uma fonte já existente (RF7) — nenhuma fonte nova criada. */
+  merged: number;
   duplicates: number;
   errors: { candidate: ImportCandidate; message: string }[];
+}
+
+export interface ConfirmImportInput {
+  candidates: ImportCandidate[];
+  /** Decisões de conflito por candidate.localId, só para os que batem com uma fonte já existente. */
+  mergeDecisions?: Record<string, MergeDecisions>;
 }
 
 /** Remove o registro de sources (e, em cascata, source_people/source_keywords/source_tags/source_titles/source_abstracts/source_links) já inseridos para esta fonte. */
@@ -46,24 +61,127 @@ async function rollbackSource(sourceId: string) {
   await supabase.from("sources").delete().eq("id", sourceId);
 }
 
+/** Mescla um candidato que bateu na mesma chave_doc de `existing` (RF7): nunca cria fonte nova. */
+async function mergeIntoExisting(
+  ownerId: string,
+  existing: SourceRow,
+  candidate: ImportCandidate,
+  decisions: MergeDecisions,
+) {
+  const plan = computeMergePlan(existing, candidate);
+  const resolved = resolveMergePlan(plan, decisions);
+
+  if (Object.keys(resolved.sourceUpdate).length > 0) {
+    const payload: TablesUpdate<"sources"> = {};
+    for (const [field, value] of Object.entries(resolved.sourceUpdate)) {
+      Object.assign(payload, { [mergeFieldColumn(field as MergeFieldKey)]: value });
+    }
+    const { error } = await supabase.from("sources").update(payload).eq("id", existing.id);
+    if (error) throw error;
+  }
+
+  if (resolved.titleRows.length > 0) {
+    const { error } = await supabase.from("source_titles").insert(
+      resolved.titleRows.map((t) => ({
+        source_id: existing.id,
+        title_text: t.text,
+        language: t.language,
+        title_type: "traduzido" as const,
+      })),
+    );
+    if (error) throw error;
+  }
+
+  if (resolved.abstractRows.length > 0) {
+    const { error } = await supabase.from("source_abstracts").insert(
+      resolved.abstractRows.map((a) => ({
+        source_id: existing.id,
+        abstract_text: a.text,
+        language: a.language,
+      })),
+    );
+    if (error) throw error;
+  }
+
+  if (resolved.linkRows.length > 0) {
+    const { error } = await supabase.from("source_links").insert(
+      resolved.linkRows.map((l) => ({
+        source_id: existing.id,
+        url: l.url,
+        link_type: l.linkType,
+      })),
+    );
+    if (error) throw error;
+  }
+
+  if (plan.newKeywordLabels.length > 0) {
+    const keywordIds: string[] = [];
+    for (const label of plan.newKeywordLabels) {
+      const keyword = await upsertKeyword(ownerId, label);
+      keywordIds.push(keyword.id);
+    }
+    const { error } = await supabase.from("source_keywords").upsert(
+      keywordIds.map((keyword_id) => ({ source_id: existing.id, keyword_id })),
+      { onConflict: "source_id,keyword_id", ignoreDuplicates: true },
+    );
+    if (error) throw error;
+  }
+
+  if (plan.newAuthorNames.length > 0) {
+    const existingAutorPositions = existing.source_people
+      .filter((sp) => sp.role === "autor")
+      .map((sp) => sp.position);
+    let nextPosition =
+      existingAutorPositions.length > 0 ? Math.max(...existingAutorPositions) + 1 : 1;
+    const rows: TablesInsert<"source_people">[] = [];
+    for (const name of plan.newAuthorNames) {
+      const person = await upsertPerson(ownerId, name);
+      rows.push({
+        source_id: existing.id,
+        person_id: person.id,
+        role: "autor",
+        position: nextPosition,
+      });
+      nextPosition += 1;
+    }
+    const { error } = await supabase
+      .from("source_people")
+      .upsert(rows, { onConflict: "source_id,person_id,role", ignoreDuplicates: true });
+    if (error) throw error;
+  }
+
+  // Histórico de importação (TDD §2.3): esta é uma nova "aparição" da mesma
+  // fonte por este canal — o evento aponta para a sobrevivente, nunca cria
+  // uma fonte separada.
+  const { error } = await supabase.from("source_import_events").insert({
+    source_id: existing.id,
+    import_channel: candidate.origin,
+    origin_reference: candidate.originReference || null,
+  });
+  if (error) throw error;
+}
+
 export function useConfirmImport(ownerId: string | undefined) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (candidates: ImportCandidate[]): Promise<ImportResult> => {
+    mutationFn: async ({
+      candidates,
+      mergeDecisions = {},
+    }: ConfirmImportInput): Promise<ImportResult> => {
       if (!ownerId) throw new Error("Usuário não autenticado.");
 
       const { data: existingSources, error: existingError } = await supabase
         .from("sources")
-        .select("id, title, chave_doc")
+        .select(SOURCE_SELECT)
         .eq("owner_id", ownerId);
       if (existingError) throw existingError;
-      const existingMap = new Map<string, { id: string; title: string }>();
-      for (const s of existingSources ?? []) {
-        if (s.chave_doc) existingMap.set(s.chave_doc, { id: s.id, title: s.title });
+      const existingMap = new Map<string, SourceRow>();
+      for (const s of (existingSources ?? []) as unknown as SourceRow[]) {
+        if (s.chave_doc) existingMap.set(s.chave_doc, s);
       }
 
-      const result: ImportResult = { inserted: 0, duplicates: 0, errors: [] };
+      const result: ImportResult = { inserted: 0, merged: 0, duplicates: 0, errors: [] };
       const seenInBatch = new Set<string>();
 
       for (const candidate of candidates) {
@@ -73,11 +191,31 @@ export function useConfirmImport(ownerId: string | undefined) {
         }
 
         const chaveDoc = candidateChaveDoc(candidate);
-        if (existingMap.has(chaveDoc) || seenInBatch.has(chaveDoc)) {
+        const existing = existingMap.get(chaveDoc);
+
+        if (!existing && seenInBatch.has(chaveDoc)) {
           result.duplicates += 1;
           continue;
         }
         seenInBatch.add(chaveDoc);
+
+        if (existing) {
+          try {
+            await mergeIntoExisting(
+              ownerId,
+              existing,
+              candidate,
+              mergeDecisions[candidate.localId] ?? {},
+            );
+            result.merged += 1;
+          } catch (error) {
+            result.errors.push({
+              candidate,
+              message: error instanceof Error ? error.message : "Erro desconhecido ao mesclar.",
+            });
+          }
+          continue;
+        }
 
         const sourceId = crypto.randomUUID();
         let sourceInserted = false;
@@ -247,7 +385,6 @@ export function useConfirmImport(ownerId: string | undefined) {
           }
 
           result.inserted += 1;
-          existingMap.set(chaveDoc, { id: sourceId, title: candidate.title.trim() });
         } catch (error) {
           // Transacional na prática: se qualquer etapa após a criação da fonte falhar, a fonte
           // é removida (cascade limpa source_people/source_keywords/source_tags) em vez de ficar
