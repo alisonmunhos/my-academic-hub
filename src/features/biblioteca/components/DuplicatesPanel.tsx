@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { CheckCircle2, Copy, ShieldQuestion } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle2, Copy, GitMerge, ShieldQuestion } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { computeDuplicateReview } from "../lib/duplicates";
 import { useIgnoreDuplicate, useMarkVariantGroup } from "../hooks/useDuplicates";
+import { useMergeSources } from "../hooks/useMergeSources";
 import type { SourceRow } from "../hooks/useSources";
 
 interface DuplicatesPanelProps {
@@ -28,6 +29,8 @@ export function DuplicatesPanel({ ownerId, sources }: DuplicatesPanelProps) {
   const review = useMemo(() => computeDuplicateReview(sources), [sources]);
   const markVariant = useMarkVariantGroup(ownerId);
   const ignoreDuplicate = useIgnoreDuplicate(ownerId);
+  const mergeSources = useMergeSources(ownerId);
+  const [mergingChaveDoc, setMergingChaveDoc] = useState<string | null>(null);
 
   async function handleMarkVariant(sourceIds: string[]) {
     try {
@@ -36,6 +39,27 @@ export function DuplicatesPanel({ ownerId, sources }: DuplicatesPanelProps) {
     } catch (error) {
       console.error(error);
       toast.error("Não foi possível marcar como variante.");
+    }
+  }
+
+  /** Mescla todas as fontes do grupo na mais antiga (RF7) — nenhuma fonte nova, nenhum dado apagado. */
+  async function handleMerge(group: { chaveDoc: string; sources: SourceRow[] }) {
+    const ordered = [...group.sources].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+    const survivor = ordered[0];
+    if (!survivor) return;
+    setMergingChaveDoc(group.chaveDoc);
+    try {
+      for (const loser of ordered.slice(1)) {
+        await mergeSources.mutateAsync({ survivorId: survivor.id, loserId: loser.id });
+      }
+      toast.success(`${ordered.length - 1} fonte(s) mesclada(s) em "${survivor.title}".`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível mesclar essas fontes.");
+    } finally {
+      setMergingChaveDoc(null);
     }
   }
 
@@ -70,13 +94,26 @@ export function DuplicatesPanel({ ownerId, sources }: DuplicatesPanelProps) {
                 <Copy className="size-3" />
                 {group.sources.length} fontes com a mesma chave
               </Badge>
-              <Button
-                size="sm"
-                onClick={() => handleMarkVariant(group.sources.map((s) => s.id))}
-                disabled={markVariant.isPending}
-              >
-                Marcar como variantes
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1"
+                  onClick={() => handleMerge(group)}
+                  disabled={mergingChaveDoc === group.chaveDoc}
+                  title="Mescla por enriquecimento na fonte mais antiga do grupo: campos e listas exclusivos das outras entram, nada é apagado."
+                >
+                  <GitMerge className="size-3.5" />
+                  {mergingChaveDoc === group.chaveDoc ? "Mesclando..." : "Mesclar"}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleMarkVariant(group.sources.map((s) => s.id))}
+                  disabled={markVariant.isPending}
+                >
+                  Marcar como variantes
+                </Button>
+              </div>
             </div>
             <div className="divide-y rounded-md border">
               {group.sources.map((source) => (

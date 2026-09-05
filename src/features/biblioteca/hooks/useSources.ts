@@ -31,7 +31,7 @@ export type SourceRow = Tables<"sources"> & {
 
 export const sourcesQueryKey = (ownerId: string | undefined) => ["sources", ownerId] as const;
 
-const SOURCE_SELECT =
+export const SOURCE_SELECT =
   "*, source_people(source_id, person_id, role, position, people(id, full_name)), " +
   "source_keywords(keywords(id, label)), source_tags(tags(id, label, color)), " +
   "project_sources(project_id), " +

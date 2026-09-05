@@ -1,4 +1,13 @@
-import { AlertTriangle, CheckCircle2, Copy, FileText, Link2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Copy,
+  FileText,
+  GitMerge,
+  Link2,
+  Sparkles,
+  X,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +24,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { LANGUAGES, SOURCE_TYPES } from "../constants";
 import { getCandidateStatus, getMissingFields, type ImportCandidate } from "../lib/import";
+import {
+  isMergeFullyResolved,
+  type MergeDecisions,
+  type MergeFieldKey,
+  type MergePlan,
+} from "../lib/merge";
 
 export interface DuplicateInfo {
   id: string;
@@ -25,6 +40,13 @@ export interface DuplicateInfo {
 interface ImportReviewTableProps {
   candidates: ImportCandidate[];
   duplicates: Map<string, DuplicateInfo | null>;
+  mergePlans: Map<string, MergePlan>;
+  mergeDecisions: Record<string, MergeDecisions>;
+  onMergeFieldDecision: (
+    localId: string,
+    field: MergeFieldKey,
+    decision: "existing" | "new",
+  ) => void;
   onChange: (localId: string, patch: Partial<ImportCandidate>) => void;
   onRemove: (localId: string) => void;
   onOpenExisting?: (id: string) => void;
@@ -39,16 +61,18 @@ const ORIGIN_ICON: Record<ImportCandidate["origin"], typeof Link2> = {
 function StatusBadge({
   candidate,
   duplicateOf,
+  mergeConflictsPending,
 }: {
   candidate: ImportCandidate;
   duplicateOf: DuplicateInfo | null;
+  mergeConflictsPending: boolean;
 }) {
-  const status = getCandidateStatus(candidate, duplicateOf);
+  const status = getCandidateStatus(candidate, duplicateOf, mergeConflictsPending);
   if (status === "duplicate") {
     return (
       <Badge variant="secondary" className="gap-1">
         <Copy className="size-3" />
-        {duplicateOf?.local ? "Duplicata neste lote" : "Já existe"}
+        Duplicata neste lote
       </Badge>
     );
   }
@@ -57,6 +81,22 @@ function StatusBadge({
       <Badge variant="destructive" className="gap-1">
         <AlertTriangle className="size-3" />
         Título obrigatório
+      </Badge>
+    );
+  }
+  if (status === "merge_conflict") {
+    return (
+      <Badge variant="destructive" className="gap-1">
+        <GitMerge className="size-3" />
+        Já existe — resolva os conflitos abaixo
+      </Badge>
+    );
+  }
+  if (status === "merge_ready") {
+    return (
+      <Badge variant="outline" className="gap-1 text-blue-600">
+        <GitMerge className="size-3" />
+        Será mesclada com a fonte existente
       </Badge>
     );
   }
@@ -76,9 +116,88 @@ function StatusBadge({
   );
 }
 
+function MergeConflictPanel({
+  candidate,
+  plan,
+  decisions,
+  onDecision,
+}: {
+  candidate: ImportCandidate;
+  plan: MergePlan;
+  decisions: MergeDecisions;
+  onDecision: (field: MergeFieldKey, decision: "existing" | "new") => void;
+}) {
+  const conflicts = plan.fieldDiffs.filter((d) => d.status === "conflict");
+  const extras = [
+    plan.newTitles.length > 0 && `${plan.newTitles.length} título(s) alternativo(s)`,
+    plan.newAbstracts.length > 0 && `${plan.newAbstracts.length} resumo(s)`,
+    plan.newLinks.length > 0 && `${plan.newLinks.length} link(s)`,
+    plan.newKeywordLabels.length > 0 && `${plan.newKeywordLabels.length} palavra(s)-chave`,
+    plan.newAuthorNames.length > 0 && `${plan.newAuthorNames.length} autor(es)`,
+  ].filter(Boolean) as string[];
+
+  return (
+    <div className="space-y-3 rounded-md border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+      <p className="text-xs font-medium text-blue-900 dark:text-blue-200">
+        Mesclagem por enriquecimento: nenhuma fonte nova será criada — os dados abaixo se somam à
+        fonte já existente.
+      </p>
+      {extras.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Adiciona automaticamente: {extras.join(", ")}.
+        </p>
+      )}
+      {conflicts.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-destructive">
+            Campos com valores diferentes — escolha qual manter:
+          </p>
+          {conflicts.map((diff) => {
+            const decision = decisions[diff.field] ?? "existing";
+            return (
+              <div key={diff.field} className="space-y-1 rounded border bg-background p-2">
+                <p className="text-xs font-medium">{diff.label}</p>
+                <label className="flex items-start gap-2 text-xs">
+                  <input
+                    type="radio"
+                    className="mt-0.5"
+                    name={`${candidate.localId}-${diff.field}`}
+                    checked={decision === "existing"}
+                    onChange={() => onDecision(diff.field, "existing")}
+                  />
+                  <span>
+                    Manter atual:{" "}
+                    <span className="text-muted-foreground">{String(diff.existingValue)}</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-xs">
+                  <input
+                    type="radio"
+                    className="mt-0.5"
+                    name={`${candidate.localId}-${diff.field}`}
+                    checked={decision === "new"}
+                    onChange={() => onDecision(diff.field, "new")}
+                  />
+                  <span>
+                    Usar novo:{" "}
+                    <span className="text-muted-foreground">{String(diff.candidateValue)}</span>
+                  </span>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ImportReviewTable({
   candidates,
   duplicates,
+  mergePlans,
+  mergeDecisions,
+  onMergeFieldDecision,
   onChange,
   onRemove,
   onOpenExisting,
@@ -87,14 +206,27 @@ export function ImportReviewTable({
     <div className="space-y-3">
       {candidates.map((candidate) => {
         const duplicateOf = duplicates.get(candidate.localId) ?? null;
+        const plan = mergePlans.get(candidate.localId);
+        const decisions = mergeDecisions[candidate.localId] ?? {};
+        const mergeConflictsPending = plan ? !isMergeFullyResolved(plan, decisions) : false;
         const OriginIcon = ORIGIN_ICON[candidate.origin];
         return (
           <Card key={candidate.localId}>
             <CardContent className="space-y-3 p-4">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <OriginIcon className="size-3.5" />
-                  <StatusBadge candidate={candidate} duplicateOf={duplicateOf} />
+                  <StatusBadge
+                    candidate={candidate}
+                    duplicateOf={duplicateOf}
+                    mergeConflictsPending={mergeConflictsPending}
+                  />
+                  {candidate.enrichedViaCrossref && (
+                    <Badge variant="outline" className="gap-1 text-violet-600">
+                      <Sparkles className="size-3" />
+                      Dados padronizados via Crossref
+                    </Badge>
+                  )}
                   {duplicateOf && !duplicateOf.local && onOpenExisting && (
                     <Button
                       type="button"
@@ -117,6 +249,17 @@ export function ImportReviewTable({
                   <X className="size-3.5" />
                 </Button>
               </div>
+
+              {plan && (
+                <MergeConflictPanel
+                  candidate={candidate}
+                  plan={plan}
+                  decisions={decisions}
+                  onDecision={(field, decision) =>
+                    onMergeFieldDecision(candidate.localId, field, decision)
+                  }
+                />
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1">
